@@ -16,7 +16,9 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import org.w3c.dom.NameList;
 
 public class PropertiesDialog extends javax.swing.JDialog {
@@ -34,11 +36,21 @@ public class PropertiesDialog extends javax.swing.JDialog {
     private ArrayList<figures> curFig;
     int SWorkIndex;//выбранный тип работы 0-поток пуассона, 1- периодическая
     int VProperties; // выбранный пункт в V фигуре 0-экспонента, 1-элеиент, 2-1шаг, 3-логарифм, 4-xlog
+    boolean isOkPressed=false;
     
     
     public PropertiesDialog(java.awt.Frame parent, boolean modal,  figures fig, ArrayList<figures> allFigures) {
         super(parent, modal);
         initComponents();
+        
+        descriptionTextField.setLineWrap(true);    // Включить перенос строк
+        descriptionTextField.setWrapStyleWord(true); // Перенос по словам (а не по символам)
+        descriptionTextField.setAlignmentY(JTextArea.TOP_ALIGNMENT); // Выравнивание по верху
+        descriptionTextField.setAlignmentX(JTextArea.LEFT_ALIGNMENT); // Выравнивание по левому краю
+        
+        SwingUtilities.invokeLater(() -> {
+             descriptionTextField.requestFocusInWindow();
+        });
         
         curFig = allFigures;
         nameListOfEl.setModel(listModelName); //привязываем лист имен переменных NV и лист модел      
@@ -64,10 +76,10 @@ public class PropertiesDialog extends javax.swing.JDialog {
         Swork.setSelectedIndex(fig.getSwork());
         SWorkIndex = Swork.getSelectedIndex();
         
-        mainBodyTabbedPanel.addTab("Основные",mainPanel); // добавление нужных окон делаем через этот метод
+        mainBodyTabbedPanel.addTab("Basic properties",mainPanel); // добавление нужных окон делаем через этот метод
         switch (curShape) {//устанавливаем спец свойства
             case "S":
-                mainBodyTabbedPanel.addTab("Свойства S",SpropertiesPanel); // добавление нужных окон делаем через этот метод
+                mainBodyTabbedPanel.addTab("Properties of S",SpropertiesPanel); // добавление нужных окон делаем через этот метод
                 if (SWorkIndex == 0) {
                     probabilityLabel.setEnabled(true);
                     Slikelihood.setEnabled(true);
@@ -86,8 +98,8 @@ public class PropertiesDialog extends javax.swing.JDialog {
                         break;
                     }
                 }
-                mainBodyTabbedPanel.addTab("Свойства V",VpropertiesPanel); // добавление нужных окон делаем через этот метод
-                if (fig.getVSelected().equals("Индивидуальная функция сложности")){
+                mainBodyTabbedPanel.addTab("Propertires of V",VpropertiesPanel); // добавление нужных окон делаем через этот метод
+                if (fig.getVSelected().equals("Custom complexity function")){
                     addCodeWindowInProp();
                     String transform = fig.getCodeF();
                     String[] rows = transform.split("\n");
@@ -101,7 +113,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 }
                 break;
             case "O":
-                mainBodyTabbedPanel.addTab("Свойства O",OpropertiesPanel); // добавление нужных окон делаем через этот метод
+                mainBodyTabbedPanel.addTab("Propertires of O",OpropertiesPanel); // добавление нужных окон делаем через этот метод
                 Ocoef.setText(fig.getCoef());//утсанавливаем значение коэффициента эффективности
                 break;
             case "IF":
@@ -115,7 +127,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 }
                 nvComboBox.setModel(new DefaultComboBoxModel<>(newAr.toArray(new String[0])));
                 
-                mainBodyTabbedPanel.addTab("Свойства IF", IfPropertiesPanel);
+                mainBodyTabbedPanel.addTab("Propertires of IF", IfPropertiesPanel);
                 if (fig.getIfSelected() == 0){
                     selectI.setSelected(true);
                 }else{
@@ -127,7 +139,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 nvComboBox.setSelectedItem(figOnWork.getIfNvElement());
                 break;
             case "NV":
-                mainBodyTabbedPanel.addTab("Свойства NV",nvPropertiesPanel);
+                mainBodyTabbedPanel.addTab("Propertires of NV",nvPropertiesPanel);
                 break;
         }
         
@@ -140,7 +152,12 @@ public class PropertiesDialog extends javax.swing.JDialog {
             listModelNumber.addElement(outVar);
         }   
         addNvButton.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "none"); //что это?
+        
+        pack(); 
     }
+   
+    
+    
     private ArrayList<String> getArray(ArrayList<String> mas){
         ArrayList<String> newAr = new ArrayList<String>();
         for (String el : mas){
@@ -158,18 +175,20 @@ public class PropertiesDialog extends javax.swing.JDialog {
         properties = new javax.swing.ButtonGroup();
         ifProp = new javax.swing.ButtonGroup();
         SpropertiesPanel = new javax.swing.JPanel();
-        jLabel2 = new javax.swing.JLabel();
+        jPanel3 = new javax.swing.JPanel();
         Swork = new javax.swing.JComboBox<>();
         probabilityLabel = new javax.swing.JLabel();
-        periodLabel = new javax.swing.JLabel();
         Slikelihood = new javax.swing.JFormattedTextField();
+        periodLabel = new javax.swing.JLabel();
         Speriod = new javax.swing.JFormattedTextField();
         mainPanel = new javax.swing.JPanel();
-        descriptionTextField = new java.awt.TextField();
         nameLabel = new java.awt.Label();
         label6 = new java.awt.Label();
         figuresNimberField = new javax.swing.JFormattedTextField();
         shapeName = new javax.swing.JLabel();
+        nameLabel1 = new java.awt.Label();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        descriptionTextField = new javax.swing.JTextArea();
         codePanel = new javax.swing.JScrollPane();
         codeTPanel = new javax.swing.JPanel();
         firstStringCodeField = new javax.swing.JLabel();
@@ -178,7 +197,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
         codeTextField = new javax.swing.JTextPane();
         endString = new javax.swing.JLabel();
         VpropertiesPanel = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
+        jPanel1 = new javax.swing.JPanel();
         expButton = new javax.swing.JRadioButton();
         xButton = new javax.swing.JRadioButton();
         stepButton = new javax.swing.JRadioButton();
@@ -189,15 +208,13 @@ public class PropertiesDialog extends javax.swing.JDialog {
         jLabel5 = new javax.swing.JLabel();
         Ocoef = new javax.swing.JFormattedTextField();
         IfPropertiesPanel = new javax.swing.JPanel();
+        jPanel2 = new javax.swing.JPanel();
         selectI = new javax.swing.JRadioButton();
-        selectNV = new javax.swing.JRadioButton();
-        nvComboBox = new javax.swing.JComboBox<>();
         signComboBox = new javax.swing.JComboBox<>();
         compareNumberField = new javax.swing.JFormattedTextField();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        jLabel6 = new javax.swing.JLabel();
         jLabel7 = new javax.swing.JLabel();
+        selectNV = new javax.swing.JRadioButton();
+        nvComboBox = new javax.swing.JComboBox<>();
         nvPropertiesPanel = new javax.swing.JPanel();
         nameOfEl = new javax.swing.JScrollPane();
         nameListOfEl = new javax.swing.JList<>();
@@ -220,20 +237,17 @@ public class PropertiesDialog extends javax.swing.JDialog {
 
         SpropertiesPanel.setEnabled(false);
 
-        jLabel2.setText("Работа элемента");
+        jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("The operating principle"));
 
-        Swork.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Поток Пуассона", "Периодическая" }));
+        Swork.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Poisson process", "Periodic process" }));
         Swork.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 SworkActionPerformed(evt);
             }
         });
 
-        probabilityLabel.setText("Вероятность:");
+        probabilityLabel.setText("Probability:");
         probabilityLabel.setEnabled(false);
-
-        periodLabel.setText("Период:");
-        periodLabel.setEnabled(false);
 
         Slikelihood.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0.###"))));
         Slikelihood.setToolTipText("0,1 - 10");
@@ -253,6 +267,9 @@ public class PropertiesDialog extends javax.swing.JDialog {
             }
         });
 
+        periodLabel.setText("Period:");
+        periodLabel.setEnabled(false);
+
         Speriod.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter()));
         Speriod.setToolTipText("1-1000");
         Speriod.setEnabled(false);
@@ -270,54 +287,60 @@ public class PropertiesDialog extends javax.swing.JDialog {
             }
         });
 
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(Swork, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(probabilityLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(Slikelihood, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(periodLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 82, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(Speriod, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(Swork, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(probabilityLabel)
+                    .addComponent(Slikelihood, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(periodLabel)
+                    .addComponent(Speriod, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
+        );
+
         javax.swing.GroupLayout SpropertiesPanelLayout = new javax.swing.GroupLayout(SpropertiesPanel);
         SpropertiesPanel.setLayout(SpropertiesPanelLayout);
         SpropertiesPanelLayout.setHorizontalGroup(
             SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(SpropertiesPanelLayout.createSequentialGroup()
-                .addGap(73, 73, 73)
-                .addGroup(SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(SpropertiesPanelLayout.createSequentialGroup()
-                        .addComponent(jLabel2)
-                        .addGap(18, 18, 18)
-                        .addComponent(Swork, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(SpropertiesPanelLayout.createSequentialGroup()
-                        .addGroup(SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(probabilityLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(periodLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGap(18, 18, 18)
-                        .addGroup(SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(Speriod, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(Slikelihood, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addContainerGap(173, Short.MAX_VALUE))
+                .addContainerGap()
+                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
         SpropertiesPanelLayout.setVerticalGroup(
             SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(SpropertiesPanelLayout.createSequentialGroup()
-                .addGap(56, 56, 56)
-                .addGroup(SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel2)
-                    .addComponent(Swork, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addGroup(SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(probabilityLabel)
-                    .addComponent(Slikelihood, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(9, 9, 9)
-                .addGroup(SpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(periodLabel)
-                    .addComponent(Speriod, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(113, Short.MAX_VALUE))
+                .addContainerGap()
+                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        descriptionTextField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                descriptionTextFieldActionPerformed(evt);
-            }
-        });
+        nameLabel.setText("Name of");
 
-        nameLabel.setText("Имя");
-
-        label6.setText("Описание");
+        label6.setText("Description:");
 
         figuresNimberField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
         figuresNimberField.addActionListener(new java.awt.event.ActionListener() {
@@ -328,49 +351,59 @@ public class PropertiesDialog extends javax.swing.JDialog {
 
         shapeName.setText("jLabel8");
 
+        nameLabel1.setText(":");
+
+        descriptionTextField.setColumns(20);
+        descriptionTextField.setRows(5);
+        jScrollPane2.setViewportView(descriptionTextField);
+
         javax.swing.GroupLayout mainPanelLayout = new javax.swing.GroupLayout(mainPanel);
         mainPanel.setLayout(mainPanelLayout);
         mainPanelLayout.setHorizontalGroup(
             mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, mainPanelLayout.createSequentialGroup()
-                .addGap(20, 20, 20)
+            .addGroup(mainPanelLayout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(label6, javax.swing.GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE)
-                    .addComponent(nameLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane2)
                     .addGroup(mainPanelLayout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(descriptionTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE))
-                    .addGroup(mainPanelLayout.createSequentialGroup()
-                        .addGap(11, 11, 11)
-                        .addComponent(shapeName)
-                        .addGap(18, 18, 18)
-                        .addComponent(figuresNimberField, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE))))
+                        .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(mainPanelLayout.createSequentialGroup()
+                                .addComponent(label6, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(27, 27, 27))
+                            .addGroup(mainPanelLayout.createSequentialGroup()
+                                .addComponent(nameLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(1, 1, 1)
+                                .addComponent(shapeName)
+                                .addGap(1, 1, 1)
+                                .addComponent(nameLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                        .addComponent(figuresNimberField, javax.swing.GroupLayout.PREFERRED_SIZE, 226, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
         );
         mainPanelLayout.setVerticalGroup(
             mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(mainPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(nameLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(figuresNimberField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(shapeName)))
+                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(figuresNimberField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(nameLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(shapeName, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(nameLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(mainPanelLayout.createSequentialGroup()
-                        .addComponent(label6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 193, Short.MAX_VALUE))
-                    .addComponent(descriptionTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
+                .addComponent(label6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(1, 1, 1)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        firstStringCodeField.setText("V1_def (Имя функции) <- function(S, V){");
+        nameLabel.getAccessibleContext().setAccessibleName("Name of ");
+        label6.getAccessibleContext().setAccessibleName("Description:");
 
-        lastStringCodeField.setText(" (Имя функции)<-Df ");
+        firstStringCodeField.setText("V1_def (Function name) <- function(S, V){");
 
-        codeTextField.setText(" # расчет для логарифмической сложности\n N<-length(S$S)\n Df<-data.frame(I=1:N,  \n                J=vector(mode = \"numeric\", length = length(N)),  \n                Prj_Flow=S$S,  \n                Prj_File=vector(mode = \"numeric\", length = length(N)),  \n                V_W=vector(mode = \"numeric\", length = length(N)),  \n                V=V,  \n                R=vector(mode = \"numeric\", length = length(N)),  \n                ID_File=vector(mode = \"numeric\", length = length(N)),  \n                ID_Out=vector(mode = \"numeric\", length = length(N)))\n j<-1\n L<-0\n\n for (i in 1:N){\n   Df$Prj_File[i]<-sum(Df$Prj_Flow[i:j])\n   Df$ID_File[i]<-list(unique(list_c(S$ID[i:j])))\n   Df$J[i]<-j\n   if (Df$V_W[i]==0) {\n     nk<-Df$Prj_File[i]\n     L<-1 // Сюда вносить правки\n     k<-min(i+L-1,N)\n     if (k>=i){\n       Df$V_W[i:k]<-L\n       Df$R[k] <- nk\n       Df$ID_Out[k]<-Df$ID_File[i]\n     }\n     j<-i+1\n   }\n }\n\n P1<-Df$R\n P2<-Df$ID_Out\n Df$R[1]<-0\n Df$R[2:N]<-P1[1:(N-1)]\n Df$ID_Out[1]<-0\n Df$ID_Out[2:N]<-P2[1:(N-1)]");
+        lastStringCodeField.setText(" (Function name)<-Df ");
+
+        codeTextField.setText(" # O( log N ) analysis\n N<-length(S$S)\n Df<-data.frame(I=1:N,  \n                J=vector(mode = \"numeric\", length = length(N)),  \n                Prj_Flow=S$S,  \n                Prj_File=vector(mode = \"numeric\", length = length(N)),  \n                V_W=vector(mode = \"numeric\", length = length(N)),  \n                V=V,  \n                R=vector(mode = \"numeric\", length = length(N)),  \n                ID_File=vector(mode = \"numeric\", length = length(N)),  \n                ID_Out=vector(mode = \"numeric\", length = length(N)))\n j<-1\n L<-0\n\n for (i in 1:N){\n   Df$Prj_File[i]<-sum(Df$Prj_Flow[i:j])\n   Df$ID_File[i]<-list(unique(list_c(S$ID[i:j])))\n   Df$J[i]<-j\n   if (Df$V_W[i]==0) {\n     nk<-Df$Prj_File[i]\n     L<-1 \n     k<-min(i+L-1,N)\n     if (k>=i){\n       Df$V_W[i:k]<-L\n       Df$R[k] <- nk\n       Df$ID_Out[k]<-Df$ID_File[i]\n     }\n     j<-i+1\n   }\n }\n\n P1<-Df$R\n P2<-Df$ID_Out\n Df$R[1]<-0\n Df$R[2:N]<-P1[1:(N-1)]\n Df$ID_Out[1]<-0\n Df$ID_Out[2:N]<-P2[1:(N-1)]");
         jScrollPane1.setViewportView(codeTextField);
 
         endString.setText(" }");
@@ -386,12 +419,12 @@ public class PropertiesDialog extends javax.swing.JDialog {
                         .addGroup(codeTPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lastStringCodeField)
                             .addComponent(endString))
-                        .addGap(0, 488, Short.MAX_VALUE))
+                        .addContainerGap())
                     .addGroup(codeTPanelLayout.createSequentialGroup()
                         .addGroup(codeTPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(firstStringCodeField)
                             .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 481, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addContainerGap())))
         );
         codeTPanelLayout.setVerticalGroup(
             codeTPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -411,15 +444,21 @@ public class PropertiesDialog extends javax.swing.JDialog {
 
         VpropertiesPanel.setEnabled(false);
 
-        jLabel1.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
-        jLabel1.setText("Сложность алгоритма");
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("The algorithmic complexity of the algorithm"));
 
         properties.add(expButton);
         expButton.setSelected(true);
-        expButton.setText("Экспонента (exp(x))");
+        expButton.setText("O ( Exp( N ) )");
+        expButton.setActionCommand("O(exp(x))");
+        expButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                expButtonActionPerformed(evt);
+            }
+        });
 
         properties.add(xButton);
-        xButton.setText("Элемент (х)");
+        xButton.setText("O ( N )");
+        xButton.setActionCommand("O ( N )");
         xButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 xButtonActionPerformed(evt);
@@ -427,48 +466,50 @@ public class PropertiesDialog extends javax.swing.JDialog {
         });
 
         properties.add(stepButton);
-        stepButton.setText("1 шаг (1)");
+        stepButton.setText("O ( 1 )");
 
         properties.add(logButton);
-        logButton.setText("Логарифм (log(x))");
+        logButton.setText("O ( Log( N ) )");
+        logButton.setActionCommand("O ( Log( N ) )");
 
         properties.add(xlogButton);
-        xlogButton.setText("xlog(x)");
+        xlogButton.setText("O ( N * Log( N ) )");
+        xlogButton.setActionCommand("O ( N * Log( N ) )");
 
         properties.add(individCodeButton);
-        individCodeButton.setText("Индивидуальная функция сложности");
+        individCodeButton.setText("Custom complexity function");
+        individCodeButton.setAutoscrolls(true);
         individCodeButton.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
             public void propertyChange(java.beans.PropertyChangeEvent evt) {
                 individCodeButtonPropertyChange(evt);
             }
         });
 
-        javax.swing.GroupLayout VpropertiesPanelLayout = new javax.swing.GroupLayout(VpropertiesPanel);
-        VpropertiesPanel.setLayout(VpropertiesPanelLayout);
-        VpropertiesPanelLayout.setHorizontalGroup(
-            VpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(VpropertiesPanelLayout.createSequentialGroup()
-                .addGroup(VpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(VpropertiesPanelLayout.createSequentialGroup()
-                        .addGap(86, 86, 86)
-                        .addGroup(VpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(xlogButton)
-                            .addComponent(logButton)
-                            .addComponent(stepButton)
-                            .addComponent(xButton)
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(expButton)
-                            .addComponent(individCodeButton)))
-                    .addGroup(VpropertiesPanelLayout.createSequentialGroup()
-                        .addGap(51, 51, 51)
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 361, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(88, Short.MAX_VALUE))
+                            .addComponent(xButton)
+                            .addComponent(stepButton)
+                            .addComponent(logButton)))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(xlogButton))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(individCodeButton)))
+                .addGap(65, 65, 65))
         );
-        VpropertiesPanelLayout.setVerticalGroup(
-            VpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(VpropertiesPanelLayout.createSequentialGroup()
-                .addGap(18, 18, 18)
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
                 .addComponent(expButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(xButton)
@@ -478,15 +519,31 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 .addComponent(logButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(xlogButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(individCodeButton)
-                .addContainerGap(57, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(individCodeButton))
+        );
+
+        javax.swing.GroupLayout VpropertiesPanelLayout = new javax.swing.GroupLayout(VpropertiesPanel);
+        VpropertiesPanel.setLayout(VpropertiesPanelLayout);
+        VpropertiesPanelLayout.setHorizontalGroup(
+            VpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(VpropertiesPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+        VpropertiesPanelLayout.setVerticalGroup(
+            VpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(VpropertiesPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         OpropertiesPanel.setVerifyInputWhenFocusTarget(false);
 
         jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel5.setText("Коэффициент эффективности:");
+        jLabel5.setText("Performance correction coefficient:");
 
         Ocoef.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0.#"))));
         Ocoef.setHorizontalAlignment(javax.swing.JTextField.LEFT);
@@ -513,25 +570,44 @@ public class PropertiesDialog extends javax.swing.JDialog {
         OpropertiesPanelLayout.setHorizontalGroup(
             OpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(OpropertiesPanelLayout.createSequentialGroup()
-                .addGap(46, 46, 46)
+                .addContainerGap()
                 .addComponent(jLabel5)
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(Ocoef, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(179, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         OpropertiesPanelLayout.setVerticalGroup(
             OpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(OpropertiesPanelLayout.createSequentialGroup()
-                .addGap(106, 106, 106)
+                .addContainerGap()
                 .addGroup(OpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel5)
                     .addComponent(Ocoef, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(136, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
+
+        jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Condition"));
 
         ifProp.add(selectI);
         selectI.setSelected(true);
-        selectI.setText("i");
+        selectI.setText("step (i)");
+
+        signComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "<", "<=", "=", ">=", ">" }));
+        signComboBox.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        signComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                signComboBoxActionPerformed(evt);
+            }
+        });
+
+        compareNumberField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
+        compareNumberField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                compareNumberFieldActionPerformed(evt);
+            }
+        });
+
+        jLabel7.setText("Value:");
 
         ifProp.add(selectNV);
         selectNV.setText("NV");
@@ -559,28 +635,42 @@ public class PropertiesDialog extends javax.swing.JDialog {
             }
         });
 
-        signComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "<", "<=", "=", ">=", ">" }));
-        signComboBox.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        signComboBox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                signComboBoxActionPerformed(evt);
-            }
-        });
-
-        compareNumberField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
-        compareNumberField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                compareNumberFieldActionPerformed(evt);
-            }
-        });
-
-        jLabel3.setText("Условие");
-
-        jLabel4.setText("переменная");
-
-        jLabel6.setText("знак");
-
-        jLabel7.setText("число");
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(selectI)
+                    .addComponent(selectNV))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(signComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel7)
+                            .addComponent(compareNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(nvComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addComponent(jLabel7)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(selectI)
+                    .addComponent(signComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(compareNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(selectNV)
+                    .addComponent(nvComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
 
         javax.swing.GroupLayout IfPropertiesPanelLayout = new javax.swing.GroupLayout(IfPropertiesPanel);
         IfPropertiesPanel.setLayout(IfPropertiesPanelLayout);
@@ -588,56 +678,13 @@ public class PropertiesDialog extends javax.swing.JDialog {
             IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
-                        .addComponent(jLabel3)
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
-                        .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
-                                .addComponent(jLabel4)
-                                .addGap(48, 48, 48))
-                            .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
-                                .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(selectI)
-                                    .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
-                                        .addComponent(selectNV)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(nvComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 129, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                .addGap(0, 0, 0)))
-                        .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, IfPropertiesPanelLayout.createSequentialGroup()
-                                .addComponent(signComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(27, 27, 27)
-                                .addComponent(compareNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(35, 35, 35))
-                            .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
-                                .addGap(24, 24, 24)
-                                .addComponent(jLabel6)
-                                .addGap(96, 96, 96)
-                                .addComponent(jLabel7)
-                                .addGap(67, 67, 67))))))
+                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
         IfPropertiesPanelLayout.setVerticalGroup(
             IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(IfPropertiesPanelLayout.createSequentialGroup()
-                .addComponent(jLabel3)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jLabel4)
-                    .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(jLabel6)
-                        .addComponent(jLabel7)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(signComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(compareNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(selectI))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(IfPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(selectNV)
-                    .addComponent(nvComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -716,18 +763,25 @@ public class PropertiesDialog extends javax.swing.JDialog {
         nvPropertiesPanelLayout.setHorizontalGroup(
             nvPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, nvPropertiesPanelLayout.createSequentialGroup()
-                .addGap(39, 39, 39)
-                .addGroup(nvPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(nvPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(nvPropertiesPanelLayout.createSequentialGroup()
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(nameOfEl, javax.swing.GroupLayout.PREFERRED_SIZE, 199, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(nvPropertiesPanelLayout.createSequentialGroup()
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(addNvButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(deleteNvButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addComponent(nameOfEl, javax.swing.GroupLayout.PREFERRED_SIZE, 256, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGap(18, 18, 18)
+                        .addComponent(deleteNvButton)
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addGroup(nvPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(varOfEl, javax.swing.GroupLayout.DEFAULT_SIZE, 192, Short.MAX_VALUE)
-                    .addComponent(editNvButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
+                    .addGroup(nvPropertiesPanelLayout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(editNvButton, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(nvPropertiesPanelLayout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(varOfEl, javax.swing.GroupLayout.PREFERRED_SIZE, 239, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap())))
         );
         nvPropertiesPanelLayout.setVerticalGroup(
             nvPropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -744,7 +798,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 .addContainerGap())
         );
 
-        labelStandart.setText("Имя переменной");
+        labelStandart.setText("Name of variable");
 
         varField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
         varField.addActionListener(new java.awt.event.ActionListener() {
@@ -757,16 +811,17 @@ public class PropertiesDialog extends javax.swing.JDialog {
 
         nameOfElDefault.setText("var_nv1231");
 
-        SaveNv.setText("Сохранить");
+        SaveNv.setText("Ok");
+        SaveNv.setActionCommand("Ok");
         SaveNv.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 SaveNvActionPerformed(evt);
             }
         });
 
-        BackNv.setText("Отмена");
+        BackNv.setText("Cancel");
 
-        labelStandart1.setText("Значение переменной");
+        labelStandart1.setText("Value:");
 
         javax.swing.GroupLayout changeNvelementLayout = new javax.swing.GroupLayout(changeNvelement.getContentPane());
         changeNvelement.getContentPane().setLayout(changeNvelementLayout);
@@ -777,26 +832,22 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 .addGroup(changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(changeNvelementLayout.createSequentialGroup()
                         .addGroup(changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(labelStandart1)
                             .addGroup(changeNvelementLayout.createSequentialGroup()
                                 .addComponent(labelStandart)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(nameOfElDefault))
-                            .addGroup(changeNvelementLayout.createSequentialGroup()
-                                .addComponent(labelStandart1)
-                                .addGap(0, 0, Short.MAX_VALUE)))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(nameOfElDefault)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(varField)
-                            .addComponent(nameField, javax.swing.GroupLayout.DEFAULT_SIZE, 219, Short.MAX_VALUE)))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, changeNvelementLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(SaveNv)))
-                .addContainerGap())
-            .addGroup(changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(changeNvelementLayout.createSequentialGroup()
-                    .addGap(16, 16, 16)
-                    .addComponent(BackNv)
-                    .addContainerGap(311, Short.MAX_VALUE)))
+                            .addComponent(nameField, javax.swing.GroupLayout.DEFAULT_SIZE, 219, Short.MAX_VALUE))
+                        .addContainerGap())
+                    .addGroup(changeNvelementLayout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(SaveNv)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(BackNv)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
         changeNvelementLayout.setVerticalGroup(
             changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -810,14 +861,11 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 .addGroup(changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(varField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(labelStandart1))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 18, Short.MAX_VALUE)
-                .addComponent(SaveNv)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(SaveNv)
+                    .addComponent(BackNv))
                 .addContainerGap())
-            .addGroup(changeNvelementLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, changeNvelementLayout.createSequentialGroup()
-                    .addContainerGap(74, Short.MAX_VALUE)
-                    .addComponent(BackNv)
-                    .addContainerGap()))
         );
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
@@ -827,14 +875,14 @@ public class PropertiesDialog extends javax.swing.JDialog {
             }
         });
 
-        cancelPropBut.setText("Отмена");
+        cancelPropBut.setText("Cancel");
         cancelPropBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cancelPropButActionPerformed(evt);
             }
         });
 
-        savePropBut.setText("Сохранить");
+        savePropBut.setText("Ok");
         savePropBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 savePropButActionPerformed(evt);
@@ -846,24 +894,25 @@ public class PropertiesDialog extends javax.swing.JDialog {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(mainBodyTabbedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 510, Short.MAX_VALUE)
-                .addContainerGap())
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(0, 0, Short.MAX_VALUE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(savePropBut)
+                .addGap(18, 18, 18)
                 .addComponent(cancelPropBut)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(savePropBut))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(mainBodyTabbedPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 379, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(mainBodyTabbedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(mainBodyTabbedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 294, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(savePropBut)
-                    .addComponent(cancelPropBut))
+                    .addComponent(cancelPropBut)
+                    .addComponent(savePropBut))
                 .addContainerGap())
         );
 
@@ -877,9 +926,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
 // РАСКОМЕНТИРОВАТЬ ЕСЛИ НУЖНО СОХРАНЕНЕ АВТОМАТИЧЕСКОЕ ПОСЛЕ ЗАКРЫТИЯ ОКНА!
     }//GEN-LAST:event_formWindowClosing
 
-    private void descriptionTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_descriptionTextFieldActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_descriptionTextFieldActionPerformed
+    
 
     private void savePropButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_savePropButActionPerformed
         //Сохранение параметров фигуры на кнопку
@@ -929,11 +976,13 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 figOnWork.setVarNvElement(varNvEl);
                 break;
         }
-        
+       
+        isOkPressed = true;
         this.dispose();
     }//GEN-LAST:event_savePropButActionPerformed
 
     private void cancelPropButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelPropButActionPerformed
+        isOkPressed = false;
         this.dispose();
     }//GEN-LAST:event_cancelPropButActionPerformed
 
@@ -986,27 +1035,6 @@ public class PropertiesDialog extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_SworkActionPerformed
 
-    private void signComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signComboBoxActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_signComboBoxActionPerformed
-
-    private void compareNumberFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_compareNumberFieldActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_compareNumberFieldActionPerformed
-
-    private void selectNVStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_selectNVStateChanged
-        if (selectNV.isSelected() == true){
-            nvComboBox.setEnabled(true);
-        } else{
-            nvComboBox.setEnabled(false);
-            nvComboBox.setSelectedIndex(-1);
-        }
-    }//GEN-LAST:event_selectNVStateChanged
-
-    private void nvComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nvComboBoxActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_nvComboBoxActionPerformed
-
     private void nameListOfElPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_nameListOfElPropertyChange
         
     }//GEN-LAST:event_nameListOfElPropertyChange
@@ -1029,11 +1057,11 @@ public class PropertiesDialog extends javax.swing.JDialog {
     private void addNvButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addNvButtonActionPerformed
         String initialValue = "var_"+figOnWork.getNameF()+"_";
         //Показываем окно ввода и деактивируем остальные окна
-        String varName = initialValue + (String) JOptionPane.showInputDialog(null, "Введите название переменной:", "Создание входной переменной", JOptionPane.PLAIN_MESSAGE, null, null, String.valueOf(nameNvEl.size()+1));
+        String varName = initialValue + (String) JOptionPane.showInputDialog(null, "Type the variable name:", "Adding an input variable", JOptionPane.PLAIN_MESSAGE, null, null, String.valueOf(nameNvEl.size()+1));
         // Проверяем, было ли что-то введено
         if (!(varName.isEmpty() || varName.length()>=20)) {
             if (nameNvEl.contains(varName)){
-                JOptionPane.showMessageDialog(null, "Переменная с таким названием уже существует!");
+                JOptionPane.showMessageDialog(null, "Variable name is already used!");
             }
             else{
                 listModelName.addElement(varName); //добавялем элемент с введённым названием в список вход
@@ -1042,7 +1070,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 varNvEl.add(String.valueOf("0")); //добавялем элемент с введённым названием в фигуру
             }
         } else {
-            JOptionPane.showMessageDialog(null, "Данная длина переменной недоступна.","Ошибка",JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "This variable length is not supported.","Error",JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_addNvButtonActionPerformed
 
@@ -1115,14 +1143,6 @@ public class PropertiesDialog extends javax.swing.JDialog {
         changeNvelement.dispose();
     }//GEN-LAST:event_SaveNvActionPerformed
 
-    private void selectNVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectNVActionPerformed
-       
-    }//GEN-LAST:event_selectNVActionPerformed
-
-    private void nvComboBoxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_nvComboBoxItemStateChanged
-        
-    }//GEN-LAST:event_nvComboBoxItemStateChanged
-
     private void figuresNimberFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_figuresNimberFieldActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_figuresNimberFieldActionPerformed
@@ -1142,6 +1162,39 @@ public class PropertiesDialog extends javax.swing.JDialog {
             }
         }
     }//GEN-LAST:event_individCodeButtonPropertyChange
+
+    private void expButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_expButtonActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_expButtonActionPerformed
+
+    private void nvComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nvComboBoxActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_nvComboBoxActionPerformed
+
+    private void nvComboBoxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_nvComboBoxItemStateChanged
+
+    }//GEN-LAST:event_nvComboBoxItemStateChanged
+
+    private void selectNVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectNVActionPerformed
+
+    }//GEN-LAST:event_selectNVActionPerformed
+
+    private void selectNVStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_selectNVStateChanged
+        if (selectNV.isSelected() == true){
+            nvComboBox.setEnabled(true);
+        } else{
+            nvComboBox.setEnabled(false);
+            nvComboBox.setSelectedIndex(-1);
+        }
+    }//GEN-LAST:event_selectNVStateChanged
+
+    private void compareNumberFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_compareNumberFieldActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_compareNumberFieldActionPerformed
+
+    private void signComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signComboBoxActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_signComboBoxActionPerformed
     private void addCodeWindowInProp(){
         mainBodyTabbedPanel.addTab("Функция",codeTPanel); // добавление нужных окон делаем через этот метод
     }
@@ -1179,7 +1232,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
     private javax.swing.JTextPane codeTextField;
     private javax.swing.JFormattedTextField compareNumberField;
     private javax.swing.JButton deleteNvButton;
-    private java.awt.TextField descriptionTextField;
+    private javax.swing.JTextArea descriptionTextField;
     private javax.swing.JButton editNvButton;
     private javax.swing.JLabel endString;
     private javax.swing.JRadioButton expButton;
@@ -1187,14 +1240,13 @@ public class PropertiesDialog extends javax.swing.JDialog {
     private javax.swing.JLabel firstStringCodeField;
     private javax.swing.ButtonGroup ifProp;
     private javax.swing.JRadioButton individCodeButton;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
     private java.awt.Label label6;
     private javax.swing.JLabel labelStandart;
     private javax.swing.JLabel labelStandart1;
@@ -1204,6 +1256,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
     private javax.swing.JPanel mainPanel;
     private javax.swing.JTextField nameField;
     private java.awt.Label nameLabel;
+    private java.awt.Label nameLabel1;
     private javax.swing.JList<String> nameListOfEl;
     private javax.swing.JScrollPane nameOfEl;
     private javax.swing.JLabel nameOfElDefault;

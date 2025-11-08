@@ -5,14 +5,19 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.geom.Arc2D;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 
 public class pointStraight extends points {
 
+
+    
+    
     public pointStraight(Rectangle2D r) {
         this.r = r;
         this.x = r.getCenterX();
@@ -43,6 +48,7 @@ public class pointStraight extends points {
 Font font = new Font("Arial", Font.BOLD, 24);
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 //        for (Point2D b : point) {
@@ -64,4 +70,5 @@ Font font = new Font("Arial", Font.BOLD, 24);
         }
     }
 
+    
 }

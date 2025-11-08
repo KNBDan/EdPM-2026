@@ -1,14 +1,16 @@
 package figure;
 
 import jMDIForm.jMDIFrame;
+import java.awt.Rectangle;
 import java.awt.Shape;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JComponent;
 import java.util.prefs.Preferences;
 
-public class figures extends JComponent {
+public abstract class figures extends JComponent  {
 
     public static Preferences prefs = Preferences.userNodeForPackage(figures.class);
     int x, y;//x,y - координаты центра фигуры 
@@ -36,14 +38,18 @@ public class figures extends JComponent {
     int signIfSelected = 0; //0-< 1-<= 2-= 3->= 4-> 
     int compareNumber = 0; // Число с которым сравниваем в IF
     
-    static AtomicInteger nextId = new AtomicInteger();
-    static int id;
+    int id=0;
+    int idS=0;
+    int idV=0;
+    int idO=0;
+    int idNV=0;
+    int idR=0;
+    int idIF=0;
     
     
-
     //static public boolean doubleCl = false;    
     public figures() {
-        id = nextId.incrementAndGet();
+        //id = nextId.incrementAndGet();
     }
 
     public double getS() {
@@ -101,7 +107,33 @@ public class figures extends JComponent {
     public int getId() {
         return id;
     }
+    
+    
+    public int getIdS() {
+        return idS;
+    }
 
+    public int getIdV() {
+        return idV;
+    }
+    
+    
+    public int getIdNV() {
+        return idNV;
+    }    
+
+    public int getIdR() {
+        return idR;
+    }    
+
+    public int getIdIF() {
+        return idIF;
+    }
+    
+    public int getIdO() {
+        return idO;
+    }    
+    
     public void setSize(int i) {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
@@ -150,13 +182,14 @@ public class figures extends JComponent {
     public Rectangle2D getRec() {
         return rec;
     }
-
+    
+   
     public void setRec(Rectangle2D rec) {
         this.rec = rec;
     }
     
     public void idChange() {
-        id = nextId.getAndAdd(-nextId.get());
+        //id = nextId.getAndAdd(-nextId.get());
     }
     
     public void setCoef(String coef) {
@@ -220,4 +253,7 @@ public class figures extends JComponent {
     public void setCompareNumber(int var){
         compareNumber = var;
     }
+
+
+    
 }

@@ -20,8 +20,8 @@
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/R.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/S.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/S1.java
+/Users/leonid/EdPM-Modeler-2025/src/main/java/figure/SVGDrawable.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/V.java
-/Users/leonid/EdPM-Modeler-2025/src/main/java/figure/b.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/d.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/figures.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/pointDotted.java
@@ -30,12 +30,12 @@
 /Users/leonid/EdPM-Modeler-2025/src/main/java/figure/workspace.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/ChoiceMethodPageRankDialog.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/CustomVerticalScrollbar.java
+/Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/DiagramState.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/FigurePropertiesDialog.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/Figure_s.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/FileUtils.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/GridPanel.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/Gson.java
-/Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/JSONoperations.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/PageRankFrame.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/PropertiesDialog.java
 /Users/leonid/EdPM-Modeler-2025/src/main/java/jMDIForm/g2d.java

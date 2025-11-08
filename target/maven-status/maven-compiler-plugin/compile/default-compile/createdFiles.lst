@@ -1,9 +1,12 @@
 figure/Line.class
+jMDIForm/jMDIFrame$26.class
 jMDIForm/jMDIFrame$7.class
 figure/pointStraight.class
+jMDIForm/readSaveData$1.class
 jMDIForm/jMDIFrame$19.class
 EPM/mdi$5.class
 JGraphFrame/Panelka.class
+EPM/mdi$64.class
 EPM/mdi$16.class
 EPM/mdi$36.class
 jMDIForm/ChoiceMethodPageRankDialog$4.class
@@ -12,6 +15,7 @@ jMDIForm/jMDIFrame$20.class
 EPM/mdi$44.class
 EPM/mdi$24.class
 jMDIForm/PropertiesDialog$27.class
+jMDIForm/DiagramState.class
 EPM/mdi$56.class
 jMDIForm/jMDIFrame$2.class
 EPM/mdi$50.class
@@ -35,6 +39,7 @@ EPM/mdi$23.class
 jMDIForm/PageRankFrame.class
 EPM/mdi$51.class
 jMDIForm/PropertiesDialog$22.class
+EPM/mdi$63.class
 figure/d.class
 jMDIForm/ChoiceMethodPageRankDialog$3.class
 jMDIForm/PropertiesDialog$5.class
@@ -43,6 +48,7 @@ EPM/mdi$1.class
 EPM/mdi$25.class
 jMDIForm/PropertiesDialog$20.class
 jMDIForm/ChoiceMethodPageRankDialog$2.class
+EPM/mdi$62.class
 EPM/mdi$52.class
 EPM/mdi$32.class
 jMDIForm/PropertiesDialog$13.class
@@ -50,6 +56,7 @@ jMDIForm/jMDIFrame$8.class
 EPM/mdi$9.class
 jMDIForm/PropertiesDialog$7.class
 jMDIForm/PropertiesDialog$16.class
+figure/SVGDrawable.class
 EPM/mdi$48.class
 jMDIForm/jMDIFrame$18.class
 EPM/mdi$28.class
@@ -87,6 +94,7 @@ EPM/mdi$19.class
 converter/Figure_s.class
 jMDIForm/ChoiceMethodPageRankDialog$1.class
 descritGen/subObjV.class
+jMDIForm/jMDIFrame$29.class
 figure/V.class
 point/pointDotted.class
 EPM/mdi$21.class
@@ -99,6 +107,7 @@ EPM/mdi$13.class
 rtranslator/CreateRCode.class
 jMDIForm/g2d.class
 EPM/mdi$33.class
+EPM/mdi$61.class
 EPM/mdi$41.class
 jMDIForm/PropertiesDialog$12.class
 EPM/mdi$3.class
@@ -129,6 +138,7 @@ EPM/mdi$46.class
 figure/pointDotted.class
 EPM/mdi$45.class
 EPM/mdi$35.class
+EPM/mdi$65.class
 EPM/mdi$15.class
 jMDIForm/ChoiceMethodPageRankDialog$5.class
 EPM/mdi$42.class
@@ -148,6 +158,7 @@ jMDIForm/jMDIFrame.class
 jMDIForm/PropertiesDialog$33.class
 EPM/mdi.class
 jMDIForm/PropertiesDialog$19.class
+jMDIForm/jMDIFrame$27.class
 jMDIForm/PageRankFrame$2.class
 jMDIForm/CustomVerticalScrollbar$1.class
 jMDIForm/jMDIFrame$6.class
@@ -173,8 +184,10 @@ jMDIForm/ChoiceMethodPageRankDialog$6.class
 converter/ConvertedObject.class
 EPM/mdi$14.class
 jMDIForm/GridPanel.class
+jMDIForm/jMDIFrame$28.class
 EPM/mdi$38.class
 EPM/mdi$43.class
 jMDIForm/FigurePropertiesDialog$1.class
 figure/points.class
 jMDIForm/jMDIFrame$4.class
+EPM/mdi$66.class

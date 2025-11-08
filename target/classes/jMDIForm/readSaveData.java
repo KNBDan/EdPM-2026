@@ -9,26 +9,28 @@ public class readSaveData {
         int x = Integer.parseInt(curFigF.getX_pos());
         int y = Integer.parseInt(curFigF.getY_pos());
         int s = Integer.parseInt(curFigF.getSize());
-        double zoom = 1; 
 
-        figures currentFigure = new figures();   
+        figures currentFigure = new figures() {
+
+        };   
         switch(curFigF.getShape()){
             case("d"):
-                currentFigure = new d(x-s/2, y-s/4, s); 
+                currentFigure = new d(x-s/2, y-s/4, s,currentFigure.getId(),currentFigure.getIdIF(), currentFigure.getNameF(), currentFigure.getDescriptionF());
                 currentFigure.setIfNvElement(curFigF.getIfNvElement());
                 currentFigure.setIfSelected(curFigF.getIfSelected());
                 currentFigure.setSignIfSelected(curFigF.getSignIfSelected());
                 currentFigure.setCompareNumber(curFigF.getCompareNumber());
+                
                 break;
             case("V"):
-                currentFigure = new V(x-s/4, y-s/4, s); 
+                currentFigure = new V(x-s/4, y-s/4, s, currentFigure.getId(), currentFigure.getIdV(), currentFigure.getNameF(), currentFigure.getDescriptionF());
                 currentFigure.setVSelected(curFigF.getVSelected());
                 break;
             case("R"):
-                currentFigure = new R(x-s/4, y-s/4, s);            
+                currentFigure = new R(x-s/4, y-s/4, s, currentFigure.getId(), currentFigure.getIdR(), currentFigure.getNameF(), currentFigure.getDescriptionF());
                 break;
             case("S1"):
-                currentFigure = new S1(x, y, s); 
+                currentFigure = new S1(x, y, s,currentFigure.getId(), currentFigure.getIdS(), currentFigure.getNameF(), currentFigure.getDescriptionF());
                 currentFigure.setSwork( Integer.parseInt(curFigF.getSwork()));
                 if (currentFigure.getSwork() == 0){
                     currentFigure.setLikelihood(curFigF.getLikelihood());
@@ -39,11 +41,11 @@ public class readSaveData {
                
                 break;    
             case("O"):
-                currentFigure = new O(x-s/4, y-s/4, s); 
+                currentFigure = new O(x-s/4, y-s/4, s, currentFigure.getId(), currentFigure.getIdO(), currentFigure.getNameF(), currentFigure.getDescriptionF());
                 currentFigure.setCoef(curFigF.getCoef());
                 break;
             case("NV"):
-                currentFigure = new NV(x-s/4, y-s/4, s); 
+                currentFigure = new NV(x-s/4, y-s/4, s, currentFigure.getId(), currentFigure.getIdNV(), currentFigure.getNameF(), currentFigure.getDescriptionF());
                 break;
                
         }

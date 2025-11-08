@@ -6,7 +6,7 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import javax.swing.JComponent;
 
-public class Line extends JComponent{
+public abstract class Line extends JComponent implements SVGDrawable {
     int ss=10;
     double x, y;
     Point2D c1, c2;// координаты центра точек
@@ -55,4 +55,7 @@ public class Line extends JComponent{
     public void setID22(int id22){
         this.id22=id22;
     }
+
+    @Override
+    public abstract String toSVG();
 }

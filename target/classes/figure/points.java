@@ -40,4 +40,5 @@ public class points extends JComponent {
     public ArrayList<Point2D> getPoint() {
         return point;
     }
+
 }

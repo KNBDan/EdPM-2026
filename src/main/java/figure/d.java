@@ -8,6 +8,9 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.GeneralPath;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.prefs.Preferences;
 import java.util.prefs.BackingStoreException;
 
@@ -15,6 +18,7 @@ public class  d extends figures{//document
 //int s, x, y;
     public static Color BackgroundColor;
     public static Color TextColor;
+
     static {
         // Проверяем, существует ли узел
         try {
@@ -37,45 +41,72 @@ public class  d extends figures{//document
             TextColor = Color.BLACK;
         }
     }
-    public d(int x, int y, int s) {
+    public d(int x, int y, int s, int idIF_in, int id_in, String nameF, String descriptionF) {
         this.x=x + s/2;
         this.y=y + s/4;
         this.absoluteX = this.x;
         this.absoluteY = this.y;
         this.s=s;
 //        this.nameF = "D(IF)" + this.id;
-        this.nameF = "IF" + this.id;
+        this.id = id_in;
+        this.idIF = idIF_in; 
+        //this.nameF = "IF" + idIF;
+        this.nameF = nameF;
+        this.descriptionF = descriptionF;           
     }
     Font font = new Font("Arial", Font.BOLD, 20);
     @Override
     public void paintComponent(Graphics g){
-        Graphics2D g2 = (Graphics2D) g;
-        Font font = new Font("Arial", Font.BOLD, (int)(24*s/100)); //Иванов А.А. перемещен в конструктор для обновления при перерисовке
+         Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Font font = new Font("Arial", Font.BOLD, (int)(24*s/100));
         g2.setFont(font);
-        g2.setRenderingHint ( RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); 
+
+        // Отрисовка ромба (условного блока)
         GeneralPath gp = new GeneralPath();
-        gp.moveTo(x-s/4, y-s/4);//startpoint
-        gp.lineTo(x, y);//nextpoint
-        gp.lineTo(x-s/4, y+s/4);//nextpoint
-        gp.lineTo(x-s/2, y);//nextpoint
-        gp.lineTo(x-s/4, y-s/4);//nextpoint
+        int centerX = x + s/2;  // Центр по X
+        int centerY = y + s/4;  // Центр по Y
         
-        
-               //g2.drawRect(x-s/2, y-s/4, s, s/2);
-        
-        //gp.curveTo( x-s/64, y-s/8,x+s/64, y+s/2, x-s/2, y+3*s/14);
+        // Вершины ромба относительно (x,y)
+        gp.moveTo(centerX - s/4, centerY - s/4); // Верх
+        gp.lineTo(centerX, centerY);              // Право
+        gp.lineTo(centerX - s/4, centerY + s/4);  // Низ
+        gp.lineTo(centerX - s/2, centerY);        // Лево
+        gp.closePath();
+
         g2.setColor(BackgroundColor);
         g2.fill(gp);
         g2.setColor(TextColor);
         g2.setStroke(new BasicStroke(2));
         g2.draw(gp);
-        
+
+        // Центрирование текста
         FontMetrics fm = g.getFontMetrics();
-        int width = fm.stringWidth(nameF);
-        g2.drawString(nameF, x - width/2-s/4, y+7*s/100);
+        int textWidth = fm.stringWidth(nameF);
         
-//        g2.drawString(nameF, x-34*s/100, y+7*s/100); //Иванов А.А. надпись центруется с учетом масштаба
-        shape =gp;
-        rec=shape.getBounds2D();
-        }
+        int textX = centerX - textWidth/2 - s/4;
+        int textY = centerY + fm.getAscent()/2 - 2;
+        
+        g2.drawString(nameF, textX, textY);
+
+        shape = gp;
+        rec = gp.getBounds2D();
+    }
+    
+    public List<Point2D> getConnectionPoints() {
+        List<Point2D> points = new ArrayList<>();
+        int centerX = x + s/2;
+        int centerY = y + s/4;
+        
+        // Точки соединения в середине каждой стороны
+        points.add(new Point2D.Double(centerX - s/4, centerY - s/8)); // Верх
+        points.add(new Point2D.Double(centerX - s/8, centerY));       // Право
+        points.add(new Point2D.Double(centerX - s/4, centerY + s/8)); // Низ
+        points.add(new Point2D.Double(centerX - 3*s/8, centerY));     // Лево
+        
+        return points;
+    }
+
+
+
 }

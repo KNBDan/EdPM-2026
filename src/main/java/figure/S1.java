@@ -1,7 +1,6 @@
 package figure;
 
 import figure.figures;
-import static figure.figures.nextId;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -10,8 +9,6 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.RoundRectangle2D;
-import java.util.prefs.Preferences;
 import java.util.prefs.BackingStoreException;
 
 public class S1 extends figures {
@@ -43,15 +40,20 @@ public class S1 extends figures {
         }
     }
 
-    public S1(int x, int y, int s) {
+    public S1(int x, int y, int s, int idS_in, int id_in, String nameF, String descriprionF) {
         this.x = x;
         this.y = y;
         this.absoluteX = (int) (x);
         this.absoluteY = (int) (y);
         this.s = s;
+
 //        id = nextId.incrementAndGet();
 //        id=idChange(c);
-        this.nameF = "S" + this.id;
+        this.id = id_in;
+        this.idS = idS_in;
+        //this.nameF = "S" + idS;
+        this.nameF = nameF;
+        this.descriptionF = descriprionF;
     }
 
     //Font font = new Font("Arial", Font.BOLD, 24);
@@ -78,4 +80,7 @@ public class S1 extends figures {
 //        g2.drawString(nameF, (x) + 17 * s / 100, (y) + 34 * s / 100);// в дальнейшем кнопка //Иванов А.А. надпись центруется с учетом масштаба
         rec = shape.getBounds2D();
     }
+
+    
+    
 }

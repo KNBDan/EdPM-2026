@@ -44,12 +44,39 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.swing.*;
+import javax.swing.border.Border;
+import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 
 public class mdi extends javax.swing.JFrame {     
     private static final int FRAME_OFFSET = 20;
     private int c=0; // номер нового создаваемого mdi для вычисления смещения
     private PopupMenu jMDIFrame;
+
+    
     public static Preferences prefsMdi = Preferences.userNodeForPackage(mdi.class);
+    
+    //Переменные для хранения цветов
+    private Color originalGridColor;
+    private Color originalBackgroundColor;
+    private Color originalS1BackgroundColor;
+    private Color originalS1TextColor;
+    private Color originalVBackgroundColor;
+    private Color originalVTextColor;
+    private Color originalNVBackgroundColor;
+    private Color originalNVTextColor;
+    private Color originalRBackgroundColor;
+    private Color originalRTextColor;
+    private Color originalOBackgroundColor;
+    private Color originalOTextColor;
+    private Color originalIFBackgroundColor;
+    private Color originalIFTextColor;
+    private boolean originalGridVisibility;
+
+    
+    
 
     public mdi() {
          try { 
@@ -58,15 +85,101 @@ public class mdi extends javax.swing.JFrame {
             ex.printStackTrace(); 
         }
         initComponents();
+        
+        
+        // ---- Добавляем JScrollPane программно ----
+        JScrollPane scrollPane = new JScrollPane(jDesktopPane);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+    
+        // Удаляем старый jDesktopPane из контейнера и заменяем его на scrollPane
+        getContentPane().remove(jDesktopPane);
+        getContentPane().add(scrollPane, java.awt.BorderLayout.CENTER);
+        // ------------------------------------------
+        
         Dimension sSize = Toolkit.getDefaultToolkit ().getScreenSize ();
         setSize (sSize);
         
+        // Загружаем цвет фона из Preferences
+        GridPanel.backgroundColor = new Color(GridPanel.prefs.getInt("BackgroundColor", Color.WHITE.getRGB()));
+        jBackgroundColor.setBackground(GridPanel.backgroundColor);        
+        
         if (!GridPanel.prefs.getBoolean("isVisible", true)) {
-            GridPanel.color = new Color (240, 240, 240);
+            //GridPanel.color = new Color (240, 240, 240);
             jChangeColorGrid.setEnabled(false);
         }
         
+        
+        JInternalFrame newFrame = new JInternalFrame();
+        jDesktopPane.add(newFrame);
+        addInternalFrameListeners(newFrame);
+        updateDesktopPaneSize();
+        enabledChanger();
+        
     }
+    
+    private void addInternalFrameListeners(JInternalFrame frame) {
+        frame.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                updateDesktopPaneSize();
+            }
+        
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateDesktopPaneSize();
+            }
+        });
+    }
+    
+    
+    
+    private void addNewFrame(jMDIFrame frame) {
+        jDesktopPane.add(frame);
+        frame.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                updateDesktopSize();
+            }
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateDesktopSize();
+            }
+        });
+        updateDesktopSize();
+    scrollToFrame(frame); // Опционально
+    }
+    
+    
+    private void scrollToFrame(JInternalFrame frame) {
+    Rectangle frameBounds = frame.getBounds();
+    jDesktopPane.scrollRectToVisible(frameBounds);
+    }
+    
+    private void updateDesktopSize() {
+    Rectangle totalBounds = new Rectangle();
+    
+    // Собираем границы всех окон
+    for (JInternalFrame frame : jDesktopPane.getAllFrames()) {
+        totalBounds = totalBounds.union(frame.getBounds());
+    }
+    
+    // Добавляем отступы (50px справа и снизу)
+    int padding = 50;
+    int newWidth = Math.max(
+        jDesktopPane.getParent().getWidth(),
+        totalBounds.width + totalBounds.x + padding
+    );
+    int newHeight = Math.max(
+        jDesktopPane.getParent().getHeight(),
+        totalBounds.height + totalBounds.y + padding
+    );
+    
+    jDesktopPane.setPreferredSize(new Dimension(newWidth, newHeight));
+    jDesktopPane.revalidate(); // Важно!
+    }
+    
+    
     //часть для вырезки, вставки, копирования и удаления
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -109,6 +222,9 @@ public class mdi extends javax.swing.JFrame {
         jCheckBox1 = new javax.swing.JCheckBox();
         jButton2 = new javax.swing.JButton();
         jButton3 = new javax.swing.JButton();
+        jPanelBackground = new javax.swing.JPanel();
+        jBackgroundColor = new javax.swing.JPanel();
+        jChangeColorBackground = new javax.swing.JButton();
         jButton10 = new javax.swing.JButton();
         jColorChooser1 = new javax.swing.JColorChooser();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -116,11 +232,6 @@ public class mdi extends javax.swing.JFrame {
         SetConstantDialog = new javax.swing.JDialog();
         OkIBut = new javax.swing.JButton();
         CancelIBut = new javax.swing.JButton();
-        boxIsXES = new javax.swing.JCheckBox();
-        boxIsPlot = new javax.swing.JCheckBox();
-        jLabel7 = new javax.swing.JLabel();
-        xesNameFile = new javax.swing.JTextField();
-        boxLookAtO = new javax.swing.JCheckBox();
         jPanel5 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         IValueField = new javax.swing.JFormattedTextField();
@@ -132,6 +243,11 @@ public class mdi extends javax.swing.JFrame {
         stepId = new javax.swing.JFormattedTextField();
         jLabel8 = new javax.swing.JLabel();
         valueFP = new javax.swing.JFormattedTextField();
+        boxIsPlot = new javax.swing.JCheckBox();
+        boxIsXES = new javax.swing.JCheckBox();
+        jLabel7 = new javax.swing.JLabel();
+        xesNameFile = new javax.swing.JTextField();
+        boxLookAtO = new javax.swing.JCheckBox();
         rFileSaveChooser = new javax.swing.JFileChooser();
         CyclomaticComplexityDialog = new javax.swing.JDialog();
         jLabel2 = new javax.swing.JLabel();
@@ -154,8 +270,12 @@ public class mdi extends javax.swing.JFrame {
         Open = new javax.swing.JMenuItem();
         Save = new javax.swing.JMenuItem();
         Saveas = new javax.swing.JMenuItem();
+        jExport = new javax.swing.JMenu();
+        ExportPNG = new javax.swing.JMenuItem();
         quit = new javax.swing.JMenuItem();
         jMenuEdit = new javax.swing.JMenu();
+        jMenuUndo = new javax.swing.JMenuItem();
+        jSeparator2 = new javax.swing.JPopupMenu.Separator();
         jMenuItemS = new javax.swing.JMenuItem();
         jMenuItemV = new javax.swing.JMenuItem();
         jMenuItemNV = new javax.swing.JMenuItem();
@@ -165,15 +285,15 @@ public class mdi extends javax.swing.JFrame {
         jSeparator3 = new javax.swing.JPopupMenu.Separator();
         jMenuItemClear = new javax.swing.JMenuItem();
         Tools = new javax.swing.JMenu();
-        jMenuItemSetI = new javax.swing.JMenuItem();
+        jMenuLegend = new javax.swing.JMenuItem();
+        Code_Generation = new javax.swing.JMenuItem();
         ProductivityAnalyzesMenu = new javax.swing.JMenu();
         ProductivityAnalyzesStaticMenuItem = new javax.swing.JMenuItem();
         ProductivityAnalyzesDynamicMenuItem = new javax.swing.JMenuItem();
         jMenuItem2 = new javax.swing.JMenuItem();
         jMenuOptions = new javax.swing.JMenu();
+        jMenuItemSetI = new javax.swing.JMenuItem();
         jMenuItemColorSettings = new javax.swing.JMenuItem();
-        jSeparator4 = new javax.swing.JPopupMenu.Separator();
-        Code_Generation = new javax.swing.JMenuItem();
         jMenu5 = new javax.swing.JMenu();
         Cascade = new javax.swing.JMenuItem();
         Tile = new javax.swing.JMenuItem();
@@ -599,6 +719,7 @@ public class mdi extends javax.swing.JFrame {
 
         jGridColor.setBackground(GridPanel.color);
         jGridColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        jGridColor.setEnabled(false);
         jGridColor.setPreferredSize(new java.awt.Dimension(25, 25));
 
         javax.swing.GroupLayout jGridColorLayout = new javax.swing.GroupLayout(jGridColor);
@@ -613,13 +734,14 @@ public class mdi extends javax.swing.JFrame {
         );
 
         jChangeColorGrid.setText("Color");
+        jChangeColorGrid.setEnabled(false);
         jChangeColorGrid.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jChangeColorGridActionPerformed(evt);
             }
         });
 
-        jCheckBox1.setText("Show grid");
+        jCheckBox1.setText("show grid");
         jCheckBox1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jCheckBox1ActionPerformed(evt);
@@ -637,7 +759,7 @@ public class mdi extends javax.swing.JFrame {
                 .addComponent(jGridColor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jChangeColorGrid, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
         jPanel4Layout.setVerticalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -664,6 +786,51 @@ public class mdi extends javax.swing.JFrame {
             }
         });
 
+        jPanelBackground.setBorder(javax.swing.BorderFactory.createTitledBorder("Background"));
+
+        jBackgroundColor.setBackground(GridPanel.color);
+        jBackgroundColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        jBackgroundColor.setPreferredSize(new java.awt.Dimension(25, 25));
+
+        javax.swing.GroupLayout jBackgroundColorLayout = new javax.swing.GroupLayout(jBackgroundColor);
+        jBackgroundColor.setLayout(jBackgroundColorLayout);
+        jBackgroundColorLayout.setHorizontalGroup(
+            jBackgroundColorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 23, Short.MAX_VALUE)
+        );
+        jBackgroundColorLayout.setVerticalGroup(
+            jBackgroundColorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 23, Short.MAX_VALUE)
+        );
+
+        jChangeColorBackground.setText("Color");
+        jChangeColorBackground.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jChangeColorBackgroundActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanelBackgroundLayout = new javax.swing.GroupLayout(jPanelBackground);
+        jPanelBackground.setLayout(jPanelBackgroundLayout);
+        jPanelBackgroundLayout.setHorizontalGroup(
+            jPanelBackgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelBackgroundLayout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jBackgroundColor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jChangeColorBackground, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        jPanelBackgroundLayout.setVerticalGroup(
+            jPanelBackgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanelBackgroundLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanelBackgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jChangeColorBackground)
+                    .addComponent(jBackgroundColor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -671,19 +838,20 @@ public class mdi extends javax.swing.JFrame {
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(jButton2)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButton3)
+                        .addGap(0, 0, Short.MAX_VALUE))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanelBackground, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jButton2)
-                .addGap(18, 18, 18)
-                .addComponent(jButton3)
-                .addGap(48, 48, 48))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -693,12 +861,16 @@ public class mdi extends javax.swing.JFrame {
                     .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jPanelBackground, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton2)
                     .addComponent(jButton3))
-                .addContainerGap(14, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
+
+        jPanelBackground.getAccessibleContext().setAccessibleName("BackgroundColor");
 
         javax.swing.GroupLayout jDialogSettingsLayout = new javax.swing.GroupLayout(jDialogSettings.getContentPane());
         jDialogSettings.getContentPane().setLayout(jDialogSettingsLayout);
@@ -723,7 +895,7 @@ public class mdi extends javax.swing.JFrame {
         SetConstantDialog.setModal(true);
         SetConstantDialog.setResizable(false);
 
-        OkIBut.setText("OK");
+        OkIBut.setText("Ok");
         OkIBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 OkIButActionPerformed(evt);
@@ -737,14 +909,61 @@ public class mdi extends javax.swing.JFrame {
             }
         });
 
-        boxIsXES.setText(" save results as XES file");
-        boxIsXES.addActionListener(new java.awt.event.ActionListener() {
+        jPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("Model variables"));
+        jPanel5.setToolTipText("");
+        jPanel5.setName(""); // NOI18N
+
+        jLabel1.setText("Calculation steps' start value (i):");
+
+        IValueField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
+        IValueField.setText("1");
+        IValueField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                boxIsXESActionPerformed(evt);
+                IValueFieldActionPerformed(evt);
             }
         });
 
-        boxIsPlot.setText(" plot diagrams");
+        jLabel3.setText("Calculation steps' end value (n):");
+
+        NValueField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
+        NValueField.setText("1000");
+        NValueField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                NValueFieldActionPerformed(evt);
+            }
+        });
+
+        idNumLabel.setText("First ID value (element S1):");
+
+        startIdNum.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
+        startIdNum.setText("1");
+        startIdNum.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                startIdNumActionPerformed(evt);
+            }
+        });
+
+        jLabel5.setText("A gap between ID groups: ");
+
+        stepId.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
+        stepId.setText("1000");
+        stepId.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                stepIdActionPerformed(evt);
+            }
+        });
+
+        jLabel8.setText("Start step for a periodic S (FP):");
+
+        valueFP.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
+        valueFP.setText("1");
+        valueFP.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                valueFPActionPerformed(evt);
+            }
+        });
+
+        boxIsPlot.setText("auto-generate diagram's code ");
         boxIsPlot.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 boxIsPlotActionPerformed(evt);
@@ -756,68 +975,28 @@ public class mdi extends javax.swing.JFrame {
             }
         });
 
+        boxIsXES.setText("auto-generate code for XES output");
+        boxIsXES.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                boxIsXESActionPerformed(evt);
+            }
+        });
+        boxIsXES.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+            public void propertyChange(java.beans.PropertyChangeEvent evt) {
+                boxIsXESPropertyChange(evt);
+            }
+        });
+
         jLabel7.setText("Name of XES file:");
+        jLabel7.setEnabled(false);
 
         xesNameFile.setText("result");
+        xesNameFile.setEnabled(false);
 
-        boxLookAtO.setText(" consider the impact of \"O\" elements");
+        boxLookAtO.setText("the process of O elements");
         boxLookAtO.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 boxLookAtOActionPerformed(evt);
-            }
-        });
-
-        jPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("Model variables"));
-        jPanel5.setToolTipText("");
-        jPanel5.setName(""); // NOI18N
-
-        jLabel1.setText("Cycle counter (start value of i ):");
-
-        IValueField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
-        IValueField.setText("1");
-        IValueField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                IValueFieldActionPerformed(evt);
-            }
-        });
-
-        jLabel3.setText("n =");
-
-        NValueField.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
-        NValueField.setText("1");
-        NValueField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                NValueFieldActionPerformed(evt);
-            }
-        });
-
-        idNumLabel.setText("First ID value:");
-
-        startIdNum.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
-        startIdNum.setText("1");
-        startIdNum.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                startIdNumActionPerformed(evt);
-            }
-        });
-
-        jLabel5.setText("Step between ID's groups: ");
-
-        stepId.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
-        stepId.setText("1000");
-        stepId.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                stepIdActionPerformed(evt);
-            }
-        });
-
-        jLabel8.setText("FP = ");
-
-        valueFP.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0"))));
-        valueFP.setText("1");
-        valueFP.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                valueFPActionPerformed(evt);
             }
         });
 
@@ -828,32 +1007,28 @@ public class mdi extends javax.swing.JFrame {
             .addGroup(jPanel5Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(boxIsPlot)
+                    .addComponent(boxIsXES)
                     .addGroup(jPanel5Layout.createSequentialGroup()
+                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 112, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(xesNameFile, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel5Layout.createSequentialGroup()
+                        .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(idNumLabel)
+                            .addComponent(jLabel5)
+                            .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel5Layout.createSequentialGroup()
-                                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(NValueField, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(IValueField, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addGroup(jPanel5Layout.createSequentialGroup()
-                                .addComponent(idNumLabel)
-                                .addGap(86, 86, 86)
-                                .addComponent(startIdNum)))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(jPanel5Layout.createSequentialGroup()
-                        .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(jPanel5Layout.createSequentialGroup()
-                                .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(78, 78, 78)
-                                .addComponent(valueFP, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(jPanel5Layout.createSequentialGroup()
-                                .addComponent(jLabel5)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(stepId, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                            .addComponent(valueFP, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(startIdNum, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(NValueField, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(IValueField, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(stepId, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(boxLookAtO))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -863,22 +1038,32 @@ public class mdi extends javax.swing.JFrame {
                     .addComponent(jLabel1)
                     .addComponent(IValueField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel3)
-                    .addComponent(NValueField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(idNumLabel)
-                    .addComponent(startIdNum, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(NValueField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(startIdNum, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(idNumLabel))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel5)
                     .addComponent(stepId, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel8)
                     .addComponent(valueFP, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(22, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(boxIsPlot, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(boxIsXES, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel7)
+                    .addComponent(xesNameFile, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(boxLookAtO, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout SetConstantDialogLayout = new javax.swing.GroupLayout(SetConstantDialog.getContentPane());
@@ -887,41 +1072,24 @@ public class mdi extends javax.swing.JFrame {
             SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(SetConstantDialogLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(boxIsPlot)
-                    .addComponent(boxIsXES)
-                    .addComponent(boxLookAtO)
-                    .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                        .addGroup(SetConstantDialogLayout.createSequentialGroup()
-                            .addComponent(OkIBut)
-                            .addGap(73, 73, 73)
-                            .addComponent(CancelIBut))
-                        .addGroup(SetConstantDialogLayout.createSequentialGroup()
-                            .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 112, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(xesNameFile, javax.swing.GroupLayout.PREFERRED_SIZE, 123, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(0, 8, Short.MAX_VALUE))
+                .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+            .addGroup(SetConstantDialogLayout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(OkIBut)
+                .addGap(18, 18, 18)
+                .addComponent(CancelIBut)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         SetConstantDialogLayout.setVerticalGroup(
             SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(SetConstantDialogLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(boxIsPlot, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(boxIsXES, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(boxLookAtO, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel7)
-                    .addComponent(xesNameFile, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(OkIBut)
-                    .addComponent(CancelIBut))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(CancelIBut)
+                    .addComponent(OkIBut))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -1151,6 +1319,19 @@ public class mdi extends javax.swing.JFrame {
         });
         jMenu1.add(Saveas);
 
+        jExport.setText("Export");
+        jExport.setEnabled(false);
+
+        ExportPNG.setText("Export to PNG");
+        ExportPNG.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ExportPNGActionPerformed(evt);
+            }
+        });
+        jExport.add(ExportPNG);
+
+        jMenu1.add(jExport);
+
         quit.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Q, java.awt.event.InputEvent.META_DOWN_MASK));
         quit.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
         quit.setText("Exit");
@@ -1165,6 +1346,17 @@ public class mdi extends javax.swing.JFrame {
 
         jMenuEdit.setText("Edit");
         jMenuEdit.setFont(new java.awt.Font("Arial", 0, 14)); // NOI18N
+
+        jMenuUndo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, java.awt.event.InputEvent.META_DOWN_MASK));
+        jMenuUndo.setText("Undo");
+        jMenuUndo.setEnabled(false);
+        jMenuUndo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuUndoActionPerformed(evt);
+            }
+        });
+        jMenuEdit.add(jMenuUndo);
+        jMenuEdit.add(jSeparator2);
 
         jMenuItemS.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/S1.gif"))); // NOI18N
         jMenuItemS.setText("Insert S");
@@ -1249,13 +1441,18 @@ public class mdi extends javax.swing.JFrame {
             }
         });
 
-        jMenuItemSetI.setText("Model settings ...");
-        jMenuItemSetI.addActionListener(new java.awt.event.ActionListener() {
+        jMenuLegend.setText("Show legend");
+        jMenuLegend.setEnabled(false);
+        Tools.add(jMenuLegend);
+
+        Code_Generation.setText("Model generation ...");
+        Code_Generation.setEnabled(false);
+        Code_Generation.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemSetIActionPerformed(evt);
+                Code_GenerationActionPerformed(evt);
             }
         });
-        Tools.add(jMenuItemSetI);
+        Tools.add(Code_Generation);
 
         ProductivityAnalyzesMenu.setText("Productivity analyzes");
         ProductivityAnalyzesMenu.addMenuListener(new javax.swing.event.MenuListener() {
@@ -1287,6 +1484,7 @@ public class mdi extends javax.swing.JFrame {
         Tools.add(ProductivityAnalyzesMenu);
 
         jMenuItem2.setText("Cyclomatic complexity");
+        jMenuItem2.setEnabled(false);
         jMenuItem2.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItem2ActionPerformed(evt);
@@ -1298,23 +1496,22 @@ public class mdi extends javax.swing.JFrame {
 
         jMenuOptions.setText("Options");
 
-        jMenuItemColorSettings.setText("Set color ...");
+        jMenuItemSetI.setText("Simulation settings ...");
+        jMenuItemSetI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemSetIActionPerformed(evt);
+            }
+        });
+        jMenuOptions.add(jMenuItemSetI);
+
+        jMenuItemColorSettings.setText("Color settings ...");
+        jMenuItemColorSettings.setActionCommand("Color settings ...");
         jMenuItemColorSettings.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemColorSettingsActionPerformed(evt);
             }
         });
         jMenuOptions.add(jMenuItemColorSettings);
-        jMenuOptions.add(jSeparator4);
-
-        Code_Generation.setText("Model generation ...");
-        Code_Generation.setEnabled(false);
-        Code_Generation.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                Code_GenerationActionPerformed(evt);
-            }
-        });
-        jMenuOptions.add(Code_Generation);
 
         jMenuBar1.add(jMenuOptions);
 
@@ -1362,6 +1559,10 @@ public class mdi extends javax.swing.JFrame {
         setBounds(0, 0, 800, 492);
     }// </editor-fold>//GEN-END:initComponents
 
+    
+    
+    
+    
     private void NewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NewActionPerformed
         String title = "New Model " + c; 
         Boolean resizable = true; 
@@ -1377,7 +1578,9 @@ public class mdi extends javax.swing.JFrame {
         iFrame.pack();
         iFrame.setLocation(20*c, 20*c);
         
-        jDesktopPane.add(iFrame);
+        //jDesktopPane.add(iFrame);
+        addNewFrame(iFrame);
+        iFrame.history.clear(); 
 
         iFrame.toFront();
         iFrame.setVisible(true);
@@ -1413,7 +1616,8 @@ public class mdi extends javax.swing.JFrame {
             iFrame.pack();
             iFrame.setLocation(20*c, 20*c);
         
-            jDesktopPane.add(iFrame);
+            //jDesktopPane.add(iFrame);
+            addNewFrame(iFrame);
 
             iFrame.toFront();
             iFrame.setVisible(true);
@@ -1558,13 +1762,40 @@ public class mdi extends javax.swing.JFrame {
     }//GEN-LAST:event_SaveasActionPerformed
 
     private void TileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_TileActionPerformed
-        JInternalFrame allFrames[] = jDesktopPane.getAllFrames();
-        int frameHeight = getBounds().height / allFrames.length;
-        int y = 0;
-        for (JInternalFrame allFrame : allFrames) {
-            allFrame.setSize(getBounds().width, frameHeight);
-            allFrame.setLocation(0, y);
-            y = y + frameHeight;
+        JInternalFrame[] allFrames = jDesktopPane.getAllFrames();
+        if (allFrames.length == 0) return; // Если нет окон, ничего не делаем
+
+        // Получаем размеры рабочей области jDesktopPane (без учета границ)
+        int desktopWidth = jDesktopPane.getWidth();
+        int desktopHeight = jDesktopPane.getHeight();
+
+        // Вычисляем количество строк и столбцов для равномерного распределения окон
+        int cols = (int) Math.ceil(Math.sqrt(allFrames.length));
+        int rows = (int) Math.ceil((double) allFrames.length / cols);
+
+        // Вычисляем ширину и высоту каждого окна
+        int frameWidth = Math.max(100, desktopWidth / cols);  // Минимальная ширина = 100
+        int frameHeight = Math.max(100, desktopHeight / rows); // Минимальная высота = 100
+
+        int x = 0, y = 0;
+        int currentCol = 0, currentRow = 0;
+
+        for (JInternalFrame frame : allFrames) {
+            // Устанавливаем размер и позицию окна
+            frame.setSize(frameWidth, frameHeight);
+            frame.setLocation(x, y);
+
+            // Переходим к следующему столбцу
+            x += frameWidth;
+            currentCol++;
+
+            // Если дошли до конца строки, переходим на новую строку
+            if (currentCol >= cols) {
+                x = 0;
+                y += frameHeight;
+                currentCol = 0;
+                currentRow++;
+            }
         }
     }//GEN-LAST:event_TileActionPerformed
 
@@ -1572,20 +1803,37 @@ public class mdi extends javax.swing.JFrame {
         int x = 0;
         int y = 0;
         JInternalFrame allFrames[] = jDesktopPane.getAllFrames();
-        int frameHeight = (getBounds().height - 5) - allFrames.length * FRAME_OFFSET;
-        int frameWidth = (getBounds().width - 5) - allFrames.length * FRAME_OFFSET;
+    
+        // Получаем размеры рабочей области jDesktopPane
+        int desktopWidth = jDesktopPane.getWidth();
+        int desktopHeight = jDesktopPane.getHeight();
+    
+        // Рассчитываем максимально возможные смещения, чтобы окна не выходили за границы
+        int maxFrameWidth = desktopWidth - (allFrames.length * FRAME_OFFSET);
+        int maxFrameHeight = desktopHeight - (allFrames.length * FRAME_OFFSET);
+    
+        // Устанавливаем размеры фреймов так, чтобы они не выходили за границы
         for (int i = allFrames.length - 1; i >= 0; i--) {
+            // Ограничиваем размеры фрейма
+            int frameWidth = Math.min(maxFrameWidth, allFrames[i].getWidth());
+            int frameHeight = Math.min(maxFrameHeight, allFrames[i].getHeight());
+        
+            // Ограничиваем позиционирование, чтобы фрейм не выходил за границы
+            x = Math.min(x, desktopWidth - frameWidth);
+            y = Math.min(y, desktopHeight - frameHeight);
+        
             allFrames[i].setSize(frameWidth, frameHeight);
             allFrames[i].setLocation(x, y);
+        
             x = x + FRAME_OFFSET;
             y = y + FRAME_OFFSET;
-        }    
+        }  
     }//GEN-LAST:event_CascadeActionPerformed
 
     private void AboutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_AboutActionPerformed
-        Info.showInternalMessageDialog(jDesktopPane, " Event-driven Process Methodology Modeller"
+        Info.showInternalMessageDialog(jDesktopPane, " Event-driven Process Methodology (EdPM) Modeller"
                 + "\n Version: in dev process"
-                + "\n Copyright (C) 2023-24", "About", JOptionPane.INFORMATION_MESSAGE,null);
+                + "\n Copyright (C) 2025", "About", JOptionPane.INFORMATION_MESSAGE,null);
 
     }//GEN-LAST:event_AboutActionPerformed
 
@@ -1746,8 +1994,54 @@ public class mdi extends javax.swing.JFrame {
 //Начало работы Иванова А.А. настройка цвета
     //меню настроек
     private void jMenuItemColorSettingsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemColorSettingsActionPerformed
-        jDialogSettings.setSize(290, 360);
-        jDialogSettings.setTitle("Settings");
+        
+        
+            // Сохраняем текущие цвета перед открытием диалога
+        originalGridColor = GridPanel.color;
+        originalBackgroundColor = GridPanel.backgroundColor;
+        originalS1BackgroundColor = S1.BackgroundColor;
+        originalS1TextColor = S1.TextColor;
+        originalVBackgroundColor = V.BackgroundColor;
+        originalVTextColor = V.TextColor;
+        originalNVBackgroundColor = NV.BackgroundColor;
+        originalNVTextColor = NV.TextColor;
+        originalRBackgroundColor = R.BackgroundColor;
+        originalRTextColor = R.TextColor;
+        originalOBackgroundColor = O.BackgroundColor;
+        originalOTextColor = O.TextColor;
+        originalIFBackgroundColor = d.BackgroundColor;
+        originalIFTextColor = d.TextColor;
+        originalGridVisibility = GridPanel.isVisible;
+
+        // Устанавливаем текущие значения в UI
+        jGridColor.setBackground(GridPanel.color);
+        jBackgroundColor.setBackground(GridPanel.backgroundColor);
+        jSColor.setBackground(S1.BackgroundColor);
+        jSTextColor.setBackground(S1.TextColor);
+        jVColor.setBackground(V.BackgroundColor);
+        jVTextColor.setBackground(V.TextColor);
+        jNVColor.setBackground(NV.BackgroundColor);
+        jNVTextColor.setBackground(NV.TextColor);
+        jRColor.setBackground(R.BackgroundColor);
+        jRTextColor.setBackground(R.TextColor);
+        jOColor.setBackground(O.BackgroundColor);
+        jOTextColor.setBackground(O.TextColor);
+        jIFColor.setBackground(d.BackgroundColor);
+        jIFTextColor.setBackground(d.TextColor);
+        jCheckBox1.setSelected(GridPanel.isVisible);
+
+        
+        // Автоматически подгоняем размер окна под содержимое
+        jDialogSettings.pack();
+        
+        // Центрируем относительно экрана
+        jDialogSettings.setLocationRelativeTo(null);
+        
+        
+        
+        jDialogSettings.setTitle("Color settings");
+        
+        
         jDialogSettings.setLocation((jDesktopPane.getWidth()-jDialogSettings.getWidth())/2, (jDesktopPane.getHeight()-jDialogSettings.getHeight())/2);
         
         if (GridPanel.isVisible) {
@@ -1755,6 +2049,10 @@ public class mdi extends javax.swing.JFrame {
         } else {
           jCheckBox1.setSelected(false); 
         }
+        
+        jCheckBox1.setSelected(GridPanel.isVisible); // Восстанавливаем из настроек или переменной
+        jGridColor.setEnabled(jCheckBox1.isSelected());
+        jChangeColorGrid.setEnabled(jCheckBox1.isSelected());
         
         jDialogSettings.setVisible(true);
     }//GEN-LAST:event_jMenuItemColorSettingsActionPerformed
@@ -1774,52 +2072,23 @@ public class mdi extends javax.swing.JFrame {
     private void jMenuItemSetIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSetIActionPerformed
         String base = "5";
         boolean bs = true;
-//        try {
-//            if (!mdi.prefsMdi.nodeExists("")) { //пытаемся найти i в figures
-//                // Узел не существует - устанавливаем значения по умолчанию и сохраняем их
-//                mdi.prefsMdi.put("stepId", "1");
-//                mdi.prefsMdi.put("startId", "1");
-//                mdi.prefsMdi.put("IValue", "1");
-//                mdi.prefsMdi.put("NValue", "1");
-//                mdi.prefsMdi.putBoolean("graphState", false); 
-//                mdi.prefsMdi.putBoolean("xesState", false);
-//                mdi.prefsMdi.put("rName", "Exit_R_File");
-//                mdi.prefsMdi.put("xesName", "Exit_XES");
-//                mdi.prefsMdi.put("rPath", "C:");
-//            }
-//            else{
-                // Узел  существует
+        stepId.setText((mdi.prefsMdi.get("stepId", base)));
+        startIdNum.setText((mdi.prefsMdi.get("startId", base)));
+        IValueField.setText((mdi.prefsMdi.get("IValue", base)));
+        NValueField.setText( (mdi.prefsMdi.get("NValue", base)));
+        boxIsPlot.setSelected((mdi.prefsMdi.getBoolean("graphState", bs)));
+        boxIsXES.setSelected((mdi.prefsMdi.getBoolean("xesState", bs)));
+        boxLookAtO.setSelected((mdi.prefsMdi.getBoolean("oActiveState", bs)));
+        xesNameFile.setText((mdi.prefsMdi.get("xesName", base)));
+        valueFP.setText((mdi.prefsMdi.get("FPValue", base)));
                 
-                //Вместо этих комментариев можно созздать класс, который при запуске прогр. Проверяет наличие данных в них и выставляет все по умолчанию
-                stepId.setText((mdi.prefsMdi.get("stepId", base)));
-                startIdNum.setText((mdi.prefsMdi.get("startId", base)));
-                IValueField.setText((mdi.prefsMdi.get("IValue", base)));
-                NValueField.setText( (mdi.prefsMdi.get("NValue", base)));
-                boxIsPlot.setSelected((mdi.prefsMdi.getBoolean("graphState", bs)));
-                boxIsXES.setSelected((mdi.prefsMdi.getBoolean("xesState", bs)));
-                boxLookAtO.setSelected((mdi.prefsMdi.getBoolean("oActiveState", bs)));
-                xesNameFile.setText((mdi.prefsMdi.get("xesName", base)));
-                valueFP.setText((mdi.prefsMdi.get("FPValue", base)));
-//            }
-//        } catch (BackingStoreException ex) { //при ошибке вставляем базовую 1
-//            Logger.getLogger(mdi.class.getName()).log(Level.SEVERE, null, ex);
-//            stepId.setText( "99");
-//            startIdNum.setText("99");
-//            IValueField.setText("99");
-//            NValueField.setText( "99");
-//            boxIsPlot.setSelected(false);
-//            boxIsXES.setSelected(false);
-//            xesNameFile.setText("Exit_XES");
-//            rNameFile.setText("Exit_R_File");
-//            rFileSaveWay.setText("");
-//        }   
+        enabledChanger();
 
         SetConstantDialog.setModal(true);
-        SetConstantDialog.setSize(100, 420);
-        SetConstantDialog.setTitle("Model settings");
-        SetConstantDialog.setLocation(jDesktopPane.getWidth()/2-SetConstantDialog.getWidth()/2, jDesktopPane.getHeight()/2-SetConstantDialog.getHeight()/2);
+        SetConstantDialog.setTitle("Simulation settings");
+        SetConstantDialog.setLocationRelativeTo(null);
+        SetConstantDialog.pack();
         SetConstantDialog.setVisible(true);        
-        enabledChanger();
     }//GEN-LAST:event_jMenuItemSetIActionPerformed
 
     private void Code_GenerationActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Code_GenerationActionPerformed
@@ -1850,57 +2119,43 @@ public class mdi extends javax.swing.JFrame {
     private void CancelIButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_CancelIButActionPerformed
         SetConstantDialog.setVisible(false);        
     }//GEN-LAST:event_CancelIButActionPerformed
-
-    private void IValueFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_IValueFieldActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_IValueFieldActionPerformed
-
-    private void NValueFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NValueFieldActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_NValueFieldActionPerformed
-
-    private void boxIsXESActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxIsXESActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_boxIsXESActionPerformed
-
-    private void boxIsPlotActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxIsPlotActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_boxIsPlotActionPerformed
-
-    private void startIdNumActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startIdNumActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_startIdNumActionPerformed
-
-    private void stepIdActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stepIdActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_stepIdActionPerformed
 //Конец работы Иванова А.А.
 
-    private void boxIsPlotPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_boxIsPlotPropertyChange
-        enabledChanger();
-    }//GEN-LAST:event_boxIsPlotPropertyChange
-
-    private void boxLookAtOActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxLookAtOActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_boxLookAtOActionPerformed
-
-    private void valueFPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_valueFPActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_valueFPActionPerformed
-
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        // Восстанавливаем исходные цвета
+        GridPanel.color = originalGridColor;
+        GridPanel.backgroundColor = originalBackgroundColor;
+        S1.BackgroundColor = originalS1BackgroundColor;
+        S1.TextColor = originalS1TextColor;
+        V.BackgroundColor = originalVBackgroundColor;
+        V.TextColor = originalVTextColor;
+        NV.BackgroundColor = originalNVBackgroundColor;
+        NV.TextColor = originalNVTextColor;
+        R.BackgroundColor = originalRBackgroundColor;
+        R.TextColor = originalRTextColor;
+        O.BackgroundColor = originalOBackgroundColor;
+        O.TextColor = originalOTextColor;
+        d.BackgroundColor = originalIFBackgroundColor;
+        d.TextColor = originalIFTextColor;
+        GridPanel.isVisible = originalGridVisibility;
+
+        // Закрываем диалог
         jDialogSettings.setVisible(false);
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         jDialogSettings.setVisible(false);
-        jDesktopPane.repaint();
 
-        if (GridPanel.isVisible == true)
-        GridPanel.prefs.putInt("color", GridPanel.color.getRGB());
+
+        if (GridPanel.isVisible == true) {
+            GridPanel.prefs.putInt("color", GridPanel.color.getRGB());
+        }
+        
         GridPanel.prefs.putBoolean("isVisible", GridPanel.isVisible);
+        GridPanel.prefs.putInt("BackgroundColor",  GridPanel.backgroundColor.getRGB());
 
         figures.prefs.putInt("IFBackgroundColor", d.BackgroundColor.getRGB());
+        
         figures.prefs.putInt("IFTextColor", d.TextColor.getRGB());
         figures.prefs.putInt("S1BackgroundColor", S1.BackgroundColor.getRGB());
         figures.prefs.putInt("S1TextColor", S1.TextColor.getRGB());
@@ -1912,116 +2167,162 @@ public class mdi extends javax.swing.JFrame {
         figures.prefs.putInt("RTextColor", R.TextColor.getRGB());
         figures.prefs.putInt("OBackgroundColor", O.BackgroundColor.getRGB());
         figures.prefs.putInt("OTextColor", O.TextColor.getRGB());
+        
+        
+        
+        jDesktopPane.repaint(); // Обновить отображение
         // TODO add your handling code here:
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed
 
-        if (jCheckBox1.isSelected()) {
-            GridPanel.isVisible = true;
+        
+        GridPanel.backgroundColor = new Color(GridPanel.prefs.getInt("BackgroundColor", Color.GRAY.getRGB()));
+        
+        boolean isSelected = jCheckBox1.isSelected();
+
+        // Активируем/деактивируем элементы
+        jGridColor.setEnabled(isSelected);
+        jChangeColorGrid.setEnabled(isSelected);
+
+        // Сохраняйте состояние в Preferences, если нужно
+        GridPanel.prefs.putBoolean("gridVisible", isSelected);
+        
+        //if (isSelected) {
+            //GridPanel.isVisible = true;
             //GridPanel.prefs.putBoolean("isVisible", true);
-            GridPanel.color = new Color(GridPanel.prefs.getInt("color", Color.GRAY.getRGB()));
-            jChangeColorGrid.setEnabled(true);
-        } else {
-            GridPanel.isVisible = false;
+     
+            
+            //GridPanel.color = new Color(GridPanel.prefs.getInt("color", Color.GRAY.getRGB()));
+            //jChangeColorGrid.setEnabled(true);
+        //} else {
+            //GridPanel.isVisible = false;
             //GridPanel.prefs.putBoolean("isVisible", false);
-            gridColor = GridPanel.color;
-            GridPanel.color = jDesktopPane.getSelectedFrame().getBackground();
-            jChangeColorGrid.setEnabled(false);
-        }
+          //  gridColor = GridPanel.color;
+            //GridPanel.color = jDesktopPane.getSelectedFrame().getBackground();
+            //jChangeColorGrid.setEnabled(false);
+        //}
     }//GEN-LAST:event_jCheckBox1ActionPerformed
 
+    
+    
+    
     private void jChangeColorGridActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorGridActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Pick color", Color.BLACK);
-        GridPanel.color = selectedColor;
-        jGridColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            GridPanel.color = selectedColor;
+            jGridColor.setBackground(selectedColor);
+        }    
     }//GEN-LAST:event_jChangeColorGridActionPerformed
 
     private void jChangeColorOActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorOActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        O.BackgroundColor = selectedColor;
-        jOColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            O.BackgroundColor = selectedColor;
+            jOColor.setBackground(selectedColor);
         //figures.prefs.putInt("S1BackgroundColor", selectedColor.getRGB());
-
+        }
     }//GEN-LAST:event_jChangeColorOActionPerformed
 
     private void jChangeColorIFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorIFActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Pick color", Color.BLACK);
-        d.BackgroundColor = selectedColor;
-        jIFColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            d.BackgroundColor = selectedColor;
+            jIFColor.setBackground(selectedColor);
+        }    
     }//GEN-LAST:event_jChangeColorIFActionPerformed
 
     private void jChangeColorRActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorRActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Pick color", Color.BLACK);
-        R.BackgroundColor = selectedColor;
-        jRColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            R.BackgroundColor = selectedColor;
+            jRColor.setBackground(selectedColor);
+        }    
     }//GEN-LAST:event_jChangeColorRActionPerformed
 
     private void jChangeColorNVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorNVActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Pick color", Color.BLACK);
-        NV.BackgroundColor = selectedColor;
-        jNVColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            NV.BackgroundColor = selectedColor;
+            jNVColor.setBackground(selectedColor);
+        }    
     }//GEN-LAST:event_jChangeColorNVActionPerformed
 
     private void jChangeColorVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorVActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Pick color", Color.BLACK);
-        V.BackgroundColor = selectedColor;
-        jVColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            V.BackgroundColor = selectedColor;
+            jVColor.setBackground(selectedColor);
+        }    
     }//GEN-LAST:event_jChangeColorVActionPerformed
 
     private void jChangeColorSActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorSActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        S1.BackgroundColor = selectedColor;
-        jSColor.setBackground(selectedColor);
-        //figures.prefs.putInt("S1BackgroundColor", selectedColor.getRGB());
+        if (selectedColor != null) {
+            S1.BackgroundColor = selectedColor;
+            jSColor.setBackground(selectedColor);
+            //figures.prefs.putInt("S1BackgroundColor", selectedColor.getRGB());
+        }
 
         // TODO add your handling code here:
     }//GEN-LAST:event_jChangeColorSActionPerformed
 
     private void jChangeTextColorOActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeTextColorOActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        O.TextColor = selectedColor;
-        jOTextColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            O.TextColor = selectedColor;
+            jOTextColor.setBackground(selectedColor);
+        }    
         //figures.prefs.putInt("IFTextColor", selectedColor.getRGB());
         // jDesktopPane.repaint();
     }//GEN-LAST:event_jChangeTextColorOActionPerformed
 
     private void jChangeTextColorIFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeTextColorIFActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        d.TextColor = selectedColor;
-        jIFTextColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            d.TextColor = selectedColor;
+            jIFTextColor.setBackground(selectedColor);
+        }    
         //figures.prefs.putInt("IFTextColor", selectedColor.getRGB());
         // jDesktopPane.repaint();
     }//GEN-LAST:event_jChangeTextColorIFActionPerformed
 
     private void jChangeTextColorRActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeTextColorRActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        R.TextColor = selectedColor;
-        jRTextColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            R.TextColor = selectedColor;
+            jRTextColor.setBackground(selectedColor);
+        }    
         //figures.prefs.putInt("RTextColor", selectedColor.getRGB());
         //jDesktopPane.repaint();
     }//GEN-LAST:event_jChangeTextColorRActionPerformed
 
     private void jChangeTextColorNVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeTextColorNVActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        NV.TextColor = selectedColor;
-        jNVTextColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            NV.TextColor = selectedColor;
+            jNVTextColor.setBackground(selectedColor);
+        }    
         //figures.prefs.putInt("NVTextColor", selectedColor.getRGB());
         //jDesktopPane.repaint();
     }//GEN-LAST:event_jChangeTextColorNVActionPerformed
 
     private void jChangeTextColorVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeTextColorVActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        V.TextColor = selectedColor;
-        jVTextColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            V.TextColor = selectedColor;
+            jVTextColor.setBackground(selectedColor);
+        }    
         //figures.prefs.putInt("VTextColor", selectedColor.getRGB());
         //jDesktopPane.repaint();
     }//GEN-LAST:event_jChangeTextColorVActionPerformed
 
     private void jChangeTextColorSActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeTextColorSActionPerformed
         Color selectedColor = jColorChooser1.showDialog(this, "Выберите цвет", Color.BLACK);
-        S1.TextColor = selectedColor;
-        jSTextColor.setBackground(selectedColor);
+        if (selectedColor != null) {
+            S1.TextColor = selectedColor;
+            jSTextColor.setBackground(selectedColor);
+        }    
         //figures.prefs.putInt("S1TextColor", selectedColor.getRGB());
         //jDesktopPane.repaint();
     }//GEN-LAST:event_jChangeTextColorSActionPerformed
@@ -2058,15 +2359,101 @@ public class mdi extends javax.swing.JFrame {
     private void ProductivityAnalyzesMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_ProductivityAnalyzesMenuMenuSelected
         ProductivityAnalyzesStaticMenuItem.setEnabled(jDesktopPane.getSelectedFrame() != null);
     }//GEN-LAST:event_ProductivityAnalyzesMenuMenuSelected
-     
-    public void enabledChanger(){ //Выключение ХЕС настроек при выключении построения диаграмм
-        if (boxIsPlot.isSelected()){
-            boxIsXES.setEnabled(true);
-            xesNameFile.setEnabled(true);
-        }else{
-            boxIsXES.setEnabled(false);
-            xesNameFile.setEnabled(false);
+
+    private void ExportPNGActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ExportPNGActionPerformed
+
+
+        // Выбираем место сохранения файла
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Save as PNG");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("PNG Files", "png"));
+    
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+        
+            // Добавляем расширение .png, если пользователь не указал
+            if (!file.getName().toLowerCase().endsWith(".png")) {
+                file = new File(file.getAbsolutePath() + ".png");
+            }
+            JInternalFrame iFrame = jDesktopPane.getSelectedFrame();
+            java.lang.reflect.Method method;
+            try {
+                method = iFrame.getClass().getDeclaredMethod("exportToPNG", String.class);
+                method.setAccessible(true);     
+                method.invoke(iFrame, file.getAbsolutePath());            
+            } catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException ex) {
+                Logger.getLogger(mdi.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            
         }
+    }//GEN-LAST:event_ExportPNGActionPerformed
+
+    private void jChangeColorBackgroundActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jChangeColorBackgroundActionPerformed
+        
+        
+        Color selectedColor = jColorChooser1.showDialog(this, "Pick color", Color.BLACK);
+        if (selectedColor != null) {
+            GridPanel.backgroundColor = selectedColor;
+            jBackgroundColor.setBackground(selectedColor);
+        }
+    }//GEN-LAST:event_jChangeColorBackgroundActionPerformed
+
+    private void jMenuUndoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuUndoActionPerformed
+        JInternalFrame selectedFrame = jDesktopPane.getSelectedFrame();
+
+        if (selectedFrame != null && selectedFrame instanceof jMDIFrame) {
+            jMDIFrame mdiFrame = (jMDIFrame) selectedFrame;
+            mdiFrame.undo(); //  Вызов метода undo()
+        }    
+        
+    }//GEN-LAST:event_jMenuUndoActionPerformed
+
+    private void boxLookAtOActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxLookAtOActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_boxLookAtOActionPerformed
+
+    private void boxIsXESPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_boxIsXESPropertyChange
+        enabledChanger();
+    }//GEN-LAST:event_boxIsXESPropertyChange
+
+    private void boxIsXESActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxIsXESActionPerformed
+        enabledChanger();
+    }//GEN-LAST:event_boxIsXESActionPerformed
+
+    private void boxIsPlotPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_boxIsPlotPropertyChange
+        enabledChanger();
+    }//GEN-LAST:event_boxIsPlotPropertyChange
+
+    private void boxIsPlotActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_boxIsPlotActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_boxIsPlotActionPerformed
+
+    private void valueFPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_valueFPActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_valueFPActionPerformed
+
+    private void stepIdActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stepIdActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_stepIdActionPerformed
+
+    private void startIdNumActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startIdNumActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_startIdNumActionPerformed
+
+    private void NValueFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NValueFieldActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_NValueFieldActionPerformed
+
+    private void IValueFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_IValueFieldActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_IValueFieldActionPerformed
+
+
+         
+    public void enabledChanger(){ 
+        boolean isEnabled = boxIsXES.isSelected();
+        xesNameFile.setEnabled(isEnabled);
+        jLabel7.setEnabled(isEnabled);
     }
     public static void main(String args[]) throws Exception{
         java.awt.EventQueue.invokeLater(new RunnableImpl());
@@ -2079,6 +2466,7 @@ public class mdi extends javax.swing.JFrame {
     public static javax.swing.JMenuItem Code_Generation;
     private javax.swing.JDialog CyclomaticComplexityDialog;
     private javax.swing.JLabel CyclomaticComplexityValue;
+    public static javax.swing.JMenuItem ExportPNG;
     private javax.swing.JFormattedTextField IValueField;
     private javax.swing.JOptionPane Info;
     private javax.swing.JFormattedTextField NValueField;
@@ -2099,6 +2487,7 @@ public class mdi extends javax.swing.JFrame {
     private javax.swing.JCheckBox boxIsXES;
     private javax.swing.JCheckBox boxLookAtO;
     private javax.swing.JLabel idNumLabel;
+    private javax.swing.JPanel jBackgroundColor;
     private javax.swing.JButton jButton10;
     private javax.swing.JButton jButton2;
     private javax.swing.JButton jButton3;
@@ -2111,6 +2500,7 @@ public class mdi extends javax.swing.JFrame {
     public static javax.swing.JButton jButtonS;
     public static javax.swing.JButton jButtonSave;
     public static javax.swing.JButton jButtonV;
+    private javax.swing.JButton jChangeColorBackground;
     private javax.swing.JButton jChangeColorGrid;
     private javax.swing.JButton jChangeColorIF;
     private javax.swing.JButton jChangeColorNV;
@@ -2128,6 +2518,7 @@ public class mdi extends javax.swing.JFrame {
     private javax.swing.JColorChooser jColorChooser1;
     private javax.swing.JDesktopPane jDesktopPane;
     private javax.swing.JDialog jDialogSettings;
+    public static javax.swing.JMenu jExport;
     private javax.swing.JPanel jGridColor;
     private javax.swing.JPanel jIFColor;
     private javax.swing.JPanel jIFTextColor;
@@ -2152,7 +2543,9 @@ public class mdi extends javax.swing.JFrame {
     public static javax.swing.JMenuItem jMenuItemS;
     public static javax.swing.JMenuItem jMenuItemSetI;
     public static javax.swing.JMenuItem jMenuItemV;
+    public static javax.swing.JMenuItem jMenuLegend;
     private javax.swing.JMenu jMenuOptions;
+    public static javax.swing.JMenuItem jMenuUndo;
     private javax.swing.JPanel jNVColor;
     private javax.swing.JPanel jNVTextColor;
     private javax.swing.JPanel jOColor;
@@ -2162,14 +2555,15 @@ public class mdi extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
+    private javax.swing.JPanel jPanelBackground;
     private javax.swing.JPanel jRColor;
     private javax.swing.JPanel jRTextColor;
     private javax.swing.JPanel jSColor;
     private javax.swing.JPanel jSTextColor;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JToolBar.Separator jSeparator1;
+    private javax.swing.JPopupMenu.Separator jSeparator2;
     private javax.swing.JPopupMenu.Separator jSeparator3;
-    private javax.swing.JPopupMenu.Separator jSeparator4;
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JToolBar jToolBar1;
     private javax.swing.JPanel jVColor;
@@ -2195,6 +2589,30 @@ public class mdi extends javax.swing.JFrame {
             new mdi().setVisible(true);
         }
     }
+    
+    
+    
+    private void updateDesktopPaneSize() {
+        if (jDesktopPane.getAllFrames().length == 0) {
+            // Если нет окон, сбрасываем предпочтительный размер
+            jDesktopPane.setPreferredSize(null);
+        } else {
+            // Вычисляем общие границы всех фреймов
+            Rectangle totalBounds = new Rectangle();
+            for (JInternalFrame frame : jDesktopPane.getAllFrames()) {
+                totalBounds = totalBounds.union(frame.getBounds());
+            }
+            // Добавляем отступы
+            int padding = 50;
+            int newWidth = totalBounds.width + totalBounds.x + padding;
+            int newHeight = totalBounds.height + totalBounds.y + padding;
+            jDesktopPane.setPreferredSize(new Dimension(newWidth, newHeight));
+        }
+        jDesktopPane.revalidate();
+    }
+
+    
+    
 }
 
 

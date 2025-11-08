@@ -5,7 +5,6 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Shape;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 
@@ -36,4 +35,10 @@ public class LineStraight extends Line{
         arrow.y2 = c2.getY();
         arrow.paintComponent(g);
         }
+    
+    public String toSVG() {
+        return "<line x1=\"" + c1.getX() + "\" y1=\"" + c1.getY() +
+               "\" x2=\"" + c2.getX() + "\" y2=\"" + c2.getY() +
+               "\" stroke=\"black\" stroke-width=\"2\"/>\n";
+}
 }
