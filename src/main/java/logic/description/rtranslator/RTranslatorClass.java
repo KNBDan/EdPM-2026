@@ -3,6 +3,10 @@ package logic.description.rtranslator;
 import EPM.mdi;
 import static EPM.mdi.prefsMdi;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.prefs.Preferences;
 import logic.description.rtranslator.CreateRCode;
 
@@ -24,6 +28,10 @@ public class RTranslatorClass {
     boolean ifDetector = false;
     private static Preferences localPrefsMdis = prefsMdi; 
     private String preCode;
+    private final ArrayList<String> vFunctionDefs = new ArrayList<>();
+    private final ArrayList<String> vFunctionNames = new ArrayList<>();
+    private final Map<String, String> sCodeByName = new HashMap<>();
+    private final Map<String, String> nvSourceByName = new HashMap<>();
     
     public RTranslatorClass(String preCode) {
         this.preCode = preCode;
@@ -42,7 +50,12 @@ public class RTranslatorClass {
         }
     }
     public String getStringRCode(){
-        return CreateRCode.generateCodeRFromString(preCode,rows); //Сохраняем в файл
+        String vFuncsBlock = "";
+        if (!vFunctionDefs.isEmpty()) {
+            vFuncsBlock = "# --- ==== [ Микросервисы ] ==== ---\n"
+                + String.join("\n\n", vFunctionDefs) + "\n";
+        }
+        return CreateRCode.generateCodeRFromString(preCode + "\n" + vFuncsBlock,rows); //Сохраняем в файл
     }
     public void addString(String text) {
         rows.add("N <- "+startN);
@@ -61,8 +74,8 @@ public class RTranslatorClass {
                     forAdding = space() + strg.replace("=","<-");
                     break;    
                 case ('N'): //NV
-                    forAdding = generateNVCodeR(strg);
-                    break;
+                    cacheNvSource(strg);
+                    continue;
                 case ('d'): //if
                     ifDetector = true; //нашли IF в коде
                     forAdding = generateIfStartCodeR(strg);
@@ -84,8 +97,8 @@ public class RTranslatorClass {
                     forAdding = strg;
                     break;
                 case ('S'): //S
-                    forAdding = generateSCodeR(strg);
-                    break;
+                    cacheSCode(strg);
+                    continue;
             }
             rows.add(forAdding); //Добавляем полученную строку/строкИ в массив с готовыми строками (если нужно хранить именно строку стоит 
             //перед добавлением полученную строку разделить по \n
@@ -170,54 +183,66 @@ public class RTranslatorClass {
         return rCodeString;
     }
 
-    String preRCode = ""; //код до блока r = v лдя тогоЮ чтобы записыывать nv = r в случае вхождения r в v
-
-    public String generateRCodeR(String exCode) { //Констиурктор кода языка R для фиугры R
-        preRCode = "";
+    public String generateRCodeR(String exCode) { //??????????? ???? ????? R ??? ?????? R
         String rCodeString = "";
-        String rName = exCode.split(" = ")[0]; //имя R
-        String vName = exCode.split(" = ")[1].split("\\(")[0]; //имя V
+        String rName = exCode.split(" = ")[0]; //??? R
+        String vName = exCode.split(" = ")[1].split("\\(")[0]; //??? V
         String[] allInProp = exCode.split(" = ")[1].split("\\(")[1].split("\\)")[0].split("\\,");
-        String type = allInProp[0]; //сложность
+        String type = allInProp[0]; //?????????
         String[] srFig = allInProp[1].split(" \\+ ");
-        String[] nvFig = allInProp[2].split(" \\+ "); //массив всех nv //пока не используем
-        String[] oFig = allInProp[3].split(" \\+ "); //массив всех o //пока не используем
-        String oNum = "1"; //Значения входящего О по умолчанибю
+        String[] nvFig = allInProp[2].split(" \\+ "); //?????? ???? nv //???? ?? ??????????
+        String[] oFig = allInProp[3].split(" \\+ "); //?????? ???? o //???? ?? ??????????
+        String oNum = "1"; //???????? ????????? O ?? ?????????
 
-        if (srFig[0].equals("NULL")){
+        boolean hasS = !srFig[0].equals("NULL");
+        boolean hasNV = !nvFig[0].equals("NULL");
+        if (!hasS && !hasNV){
             return "empty";
         }
-        String srElement = srBlockGen(srFig);
-        if (isActiveO && !(oFig[0].equals(" NULL"))){ //если нужно выводить О
-            oNum =  exCode.split("\\(")[2].split("\\)")[0]; //обновляем значнеие О на значение привяззанного О
+        String rInputName = findFirstRInput(srFig);
+        SrBlockResult srResult;
+        if (hasS) {
+            srResult = srBlockGenForFunction(srFig, rInputName, vName);
+        } else {
+            srResult = srBlockGenForFunction(nvFig, rInputName, vName);
         }
-        rCodeString = space() + rName + "<- V(" + type + ", " + srElement + ", \"" + vName + "\","+oNum+")"; //записываем R
+        String srElement = srResult.srElement;
+        if (isActiveO && !(oFig[0].equals(" NULL"))){ //???? ????? ???????? O
+            oNum =  exCode.split("\\(")[2].split("\\)")[0]; //????????? ???????? O ?? ???????? ???????????? O
+        }
+
+        String vFuncName = vName + "_func";
+        ArrayList<String> externalRInputs = getExternalRInputs(nvFig, rInputName);
+        ensureVFunctionDefined(vFuncName, vName, type, srResult, oNum, rInputName, srFig, nvFig, externalRInputs);
+
+        String callArgs = buildVFuncCallArgs(rInputName, externalRInputs);
+        rCodeString = space() + rName + "<- " + vFuncName + "(" + callArgs + ")";
         
-        if (isPlotActive){ //график для R
-            rCodeString +=  "\n"+ space() +"plot(1:N, "+rName+"$R, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"Элемент "+rName+"\")" +
-            "\n" + space() + "plot(1:N, "+rName+"$Prj_File, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"Элемент "+rName+"\")";
-            if (isXESActive){ // график для X
+        if (isPlotActive){ //?????? ??? R
+            rCodeString +=  "\n"+ space() +"plot(1:N, "+rName+"$R, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"??????? "+rName+"\")" +
+            "\n" + space() + "plot(1:N, "+rName+"$Prj_File, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"??????? "+rName+"\")";
+            if (isXESActive){ // ?????? ??? X
                 rCount+=1;
                 String xName = "X";
                 if (rCount == 1){
                     rCodeString+="\n" + space() +"X1<-XES("+rName+")";  
                     rCodeString+="\n" + space() +xName+"<-XES("+rName+")";
-                    rCodeString+="\n" + space() + "vioplot(X1$W, col = \"lightgray\",  panel.first=grid(), main = \"Элемент "+rName+"\")";
+                    rCodeString+="\n" + space() + "vioplot(X1$W, col = \"lightgray\",  panel.first=grid(), main = \"??????? "+rName+"\")";
                 }else{
                     xName += rCount;
                     rCodeString+="\n"+ space() +xName+"<-XES("+rName+")"
                             +"\n" + space() + "X<-rbind(X,"+xName+")";
-                    rCodeString+="\n" + space() + "vioplot("+xName+"$W, col = \"lightgray\",  panel.first=grid(), main = \"Элемент "+rName+"\")";
+                    rCodeString+="\n" + space() + "vioplot("+xName+"$W, col = \"lightgray\",  panel.first=grid(), main = \"??????? "+rName+"\")";
                 }
-                rCodeString+= "\n" + space() + "vioplot(X$W, col = \"lightgray\",  panel.first=grid(), main = \"Все элементы до "+rName+"\")";
+                rCodeString+= "\n" + space() + "vioplot(X$W, col = \"lightgray\",  panel.first=grid(), main = \"??? ???????? ?? "+rName+"\")";
             }
         }
         
-        return preRCode + rCodeString;
+        return rCodeString;
     }
 
-    private String srBlockGen(String[] allObject) {
-        String preCode = ""; //Запись преобразования r в nv. Нужно записать перед блоком r = v ()
+    private SrBlockResult srBlockGenForFunction(String[] allObject, String rInputName, String vName) {
+        StringBuilder localPreCode = new StringBuilder();
         ArrayList<String> inFigures = new ArrayList<String>();
         
         for (String el : allObject) {
@@ -226,41 +251,241 @@ public class RTranslatorClass {
         
         String readyElement = "";
         
-        if (inFigures.size() == 1) { //Если только один элемент (делаем без  АДД)
+        if (inFigures.size() == 1) { //???? ?????? ???? ??????? (?????? ??? ADD)
             String curFig = inFigures.remove(0);
             if (curFig.charAt(0) == ('R')) {
-                readyElement = addRInVInR(curFig);
-                return readyElement; //если была r выдаем NV
+                String nvName = "NV_in_" + vName;
+                String rVar = (rInputName != null && curFig.equals(rInputName)) ? "R_in" : curFig;
+                localPreCode.append(generateNVFromRVar(nvName, rVar)).append("\n");
+                readyElement = nvName;
+                return new SrBlockResult(readyElement, localPreCode.toString());
             }
-            return curFig; //Если была S выдаем S
+            return new SrBlockResult(curFig, localPreCode.toString());
         }
         
         while (inFigures.size() != 1) {
             readyElement += "Add(";
 
             String curFig = inFigures.remove(0);
-            if (curFig.charAt(0) == ('R')) { //если фигура r переделываем в NV
-                curFig = addRInVInR(curFig);
-            } //Иначе просто добавляем S
+            if (curFig.charAt(0) == ('R')) { //???? ?????? r ???????????? ? NV
+                String nvName = "NV_in_" + vName + "_" + inFigures.size();
+                String rVar = (rInputName != null && curFig.equals(rInputName)) ? "R_in" : curFig;
+                localPreCode.append(generateNVFromRVar(nvName, rVar)).append("\n");
+                curFig = nvName;
+            }
             readyElement += curFig + ",";
         }
-        //теперь добавляем последнюю фигуру в список
+        //?????? ????????? ????????? ?????? ? ??????
         String curFig = inFigures.remove(0);
-        if (curFig.charAt(0) == ('R')) { //если фигура r переделываем в NV
-               curFig = addRInVInR(curFig);
+        if (curFig.charAt(0) == ('R')) {
+               String nvName = "NV_in_" + vName + "_" + inFigures.size();
+               String rVar = (rInputName != null && curFig.equals(rInputName)) ? "R_in" : curFig;
+               localPreCode.append(generateNVFromRVar(nvName, rVar)).append("\n");
+               curFig = nvName;
            }
         readyElement += curFig + ")".repeat(allObject.length - 1);
 
-        return readyElement;
+        return new SrBlockResult(readyElement, localPreCode.toString());
     }
 
-    private String addRInVInR(String rName) { //специальный код для получения nv имени и записи пре кода
-        String nvName = "NV" + unicNvNumber + rName ; //техническое название nv
-        unicNvNumber+=1;
-        String nvSelfCode = nvName + " = " + rName; //самописный техничесакий код nv с указаниепм своего имени nv
-        preRCode += generateNVCodeR(nvSelfCode) + "\n"; //добавляем в код до текущего блока v = r
-        return nvName;
+    private String generateNVFromRVar(String nvName, String rVar){
+        return nvName + "<-subset( " + rVar + ", select=c(R, ID_Out))\n"
+            + "colnames( " + nvName + " ) <- c('S', 'ID')";
     }
+
+    private void ensureVFunctionDefined(
+        String vFuncName,
+        String vName,
+        String type,
+        SrBlockResult srResult,
+        String oNum,
+        String rInputName,
+        String[] srFig,
+        String[] nvFig,
+        ArrayList<String> externalRInputs
+    ) {
+        if (vFunctionNames.contains(vFuncName)) {
+            return;
+        }
+        vFunctionNames.add(vFuncName);
+        StringBuilder func = new StringBuilder();
+        func.append(vFuncName).append(" <- function(");
+        String funcArgs = buildVFuncParams(rInputName, externalRInputs);
+        func.append(funcArgs);
+        func.append("){").append("\n");
+        appendSCode(func, srFig);
+        appendNvCode(func, nvFig, rInputName, externalRInputs);
+        if (srResult.preCode != null && !srResult.preCode.isEmpty()) {
+            for (String line : srResult.preCode.split("\n")) {
+                if (!line.isEmpty()) {
+                    func.append("  ").append(line).append("\n");
+                }
+            }
+        }
+        func.append("  return(V(")
+            .append(type).append(", ")
+            .append(srResult.srElement).append(", \"")
+            .append(vName).append("\", ")
+            .append(oNum).append("))\n");
+        func.append("}");
+        vFunctionDefs.add(func.toString());
+    }
+
+    private String findFirstRInput(String[] srFig) {
+        for (String fig : srFig) {
+            String trimmed = fig.trim();
+            if (trimmed.startsWith("R")) {
+                return trimmed;
+            }
+        }
+        return null;
+    }
+
+    private static class SrBlockResult {
+        private final String srElement;
+        private final String preCode;
+
+        private SrBlockResult(String srElement, String preCode) {
+            this.srElement = srElement;
+            this.preCode = preCode;
+        }
+    }
+
+    private void cacheSCode(String exCode) {
+        String name = exCode.split(" = ")[0];
+        String code = generateSCodeR(exCode);
+        sCodeByName.put(name, stripIndent(code));
+    }
+
+    private void cacheNvSource(String exCode) {
+        String nvName = exCode.split(" = ")[0];
+        String rName = exCode.split(" = ")[1];
+        nvSourceByName.put(nvName, rName);
+    }
+
+    private void appendSCode(StringBuilder func, String[] srFig) {
+        Set<String> added = new HashSet<>();
+        for (String fig : srFig) {
+            String name = fig.trim();
+            if (!name.startsWith("S")) {
+                continue;
+            }
+            if (added.contains(name)) {
+                continue;
+            }
+            String code = sCodeByName.get(name);
+            if (code == null || code.isEmpty()) {
+                continue;
+            }
+            for (String line : code.split("\n")) {
+                if (!line.isEmpty()) {
+                    func.append("  ").append(line).append("\n");
+                }
+            }
+            added.add(name);
+        }
+    }
+
+    private void appendNvCode(StringBuilder func, String[] nvFig, String rInputName, ArrayList<String> externalRInputs) {
+        Set<String> added = new HashSet<>();
+        for (String fig : nvFig) {
+            String nvName = fig.trim();
+            if (nvName.equals("NULL") || nvName.isEmpty()) {
+                continue;
+            }
+            if (added.contains(nvName)) {
+                continue;
+            }
+            String rName = nvSourceByName.get(nvName);
+            if (rName == null || rName.isEmpty()) {
+                continue;
+            }
+            String rVar;
+            if (rInputName != null && rName.equals(rInputName)) {
+                rVar = "R_in";
+            } else if (externalRInputs != null && externalRInputs.contains(rName)) {
+                rVar = buildExternalParamName(rName);
+            } else {
+                rVar = rName;
+            }
+            String nvCode = generateNVFromRVar(nvName, rVar);
+            for (String line : nvCode.split("\n")) {
+                if (!line.isEmpty()) {
+                    func.append("  ").append(line).append("\n");
+                }
+            }
+            added.add(nvName);
+        }
+    }
+
+    private String stripIndent(String code) {
+        StringBuilder cleaned = new StringBuilder();
+        for (String line : code.split("\n")) {
+            cleaned.append(line.stripLeading()).append("\n");
+        }
+        return cleaned.toString().trim();
+    }
+
+    private ArrayList<String> getExternalRInputs(String[] nvFig, String rInputName) {
+        ArrayList<String> result = new ArrayList<>();
+        if (nvFig == null) {
+            return result;
+        }
+        for (String fig : nvFig) {
+            String nvName = fig.trim();
+            if (nvName.equals("NULL") || nvName.isEmpty()) {
+                continue;
+            }
+            String rName = nvSourceByName.get(nvName);
+            if (rName == null || rName.isEmpty()) {
+                continue;
+            }
+            if (rInputName != null && rName.equals(rInputName)) {
+                continue;
+            }
+            if (!result.contains(rName)) {
+                result.add(rName);
+            }
+        }
+        return result;
+    }
+
+    private String buildExternalParamName(String rName) {
+        return "R_in_" + rName;
+    }
+
+    private String buildVFuncParams(String rInputName, ArrayList<String> externalRInputs) {
+        StringBuilder args = new StringBuilder();
+        if (rInputName != null) {
+            args.append("R_in");
+        }
+        if (externalRInputs != null) {
+            for (String rName : externalRInputs) {
+                if (args.length() > 0) {
+                    args.append(", ");
+                }
+                args.append(buildExternalParamName(rName));
+            }
+        }
+        return args.toString();
+    }
+
+    private String buildVFuncCallArgs(String rInputName, ArrayList<String> externalRInputs) {
+        StringBuilder args = new StringBuilder();
+        if (rInputName != null) {
+            args.append(rInputName);
+        }
+        if (externalRInputs != null) {
+            for (String rName : externalRInputs) {
+                if (args.length() > 0) {
+                    args.append(", ");
+                }
+                args.append(rName);
+            }
+        }
+        return args.toString();
+    }
+
     private String space(){
         return "    ".repeat(numSpace);
     }
