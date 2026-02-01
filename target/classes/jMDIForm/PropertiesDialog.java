@@ -1,6 +1,6 @@
 package jMDIForm;
 
-import figure.figures;
+import objects.figure.figures;
 import java.awt.Dialog;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -35,7 +35,8 @@ public class PropertiesDialog extends javax.swing.JDialog {
     public ArrayList<String> varNvEl = new ArrayList(); // Лист с выходными переменными для сохранения
     private ArrayList<figures> curFig;
     int SWorkIndex;//выбранный тип работы 0-поток пуассона, 1- периодическая
-    int VProperties; // выбранный пункт в V фигуре 0-экспонента, 1-элеиент, 2-1шаг, 3-логарифм, 4-xlog
+    int VProperties; // ????????? ????? ? V ?????? 0-??????????, 1-???????, 2-1???, 3-????????, 4-xlog
+    private static final String V_LLM_COMPLEXITY_NAME = "LLM Generate code"; // выбранный пункт в V фигуре 0-экспонента, 1-элеиент, 2-1шаг, 3-логарифм, 4-xlog
     boolean isOkPressed=false;
     
     
@@ -56,7 +57,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
         nameListOfEl.setModel(listModelName); //привязываем лист имен переменных NV и лист модел      
         varListOfEl.setModel(listModelNumber); //привязываем лист Занчений переменныъх NV и лист модел
         figOnWork = fig; //Связываем оригинальную и вспомогательную фигуру-копию
-        curShape = fig.getClass().toString().replace("class figure.", "");
+        curShape = fig.getClass().toString().replace("class objects.figure.", "");
         if (curShape.equals("S1")){
             curShape = "S";
         }
@@ -91,9 +92,20 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 }
                 break;
             case "V":
+                String vSelected = figOnWork.getVSelected();
+                if (vSelected == null || vSelected.isEmpty()) {
+                    vSelected = expButton.getText();
+                }
+                if (vSelected.equals("Экспонента (exp(x))")) {
+                    vSelected = expButton.getText();
+                }
+                if (vSelected.equals("Llm code")) {
+                    vSelected = V_LLM_COMPLEXITY_NAME;
+                }
+                figOnWork.setVSelected(vSelected);
                 for (Enumeration<AbstractButton> buttons = properties.getElements(); buttons.hasMoreElements();) {
                     AbstractButton button = buttons.nextElement();
-                    if (button.getText().equals(figOnWork.getVSelected())) {
+                    if (button.getText().equals(vSelected)) {
                         button.setSelected(true);
                         break;
                     }
@@ -110,6 +122,10 @@ public class PropertiesDialog extends javax.swing.JDialog {
                     firstStringCodeField.setText(rows[0]);
                     lastStringCodeField.setText(rows[rows.length-2]);
                     codeTextField.setText(transform); // Установка текста кода фигуры
+                }
+                if (fig.getVSelected().equals(V_LLM_COMPLEXITY_NAME)){
+                    addLlmCodeWindowInProp();
+                    llmCodeTextField.setText(fig.getLlmPrompt());
                 }
                 break;
             case "O":
@@ -204,6 +220,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
         logButton = new javax.swing.JRadioButton();
         xlogButton = new javax.swing.JRadioButton();
         individCodeButton = new javax.swing.JRadioButton();
+        llmGeneratedCodeButton = new javax.swing.JRadioButton();
         OpropertiesPanel = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
         Ocoef = new javax.swing.JFormattedTextField();
@@ -231,6 +248,9 @@ public class PropertiesDialog extends javax.swing.JDialog {
         SaveNv = new javax.swing.JButton();
         BackNv = new javax.swing.JButton();
         labelStandart1 = new javax.swing.JLabel();
+        llmCodePanel = new javax.swing.JPanel();
+        llmCodeScrollPanel = new javax.swing.JScrollPane();
+        llmCodeTextField = new javax.swing.JTextPane();
         mainBodyTabbedPanel = new javax.swing.JTabbedPane();
         cancelPropBut = new javax.swing.JButton();
         savePropBut = new javax.swing.JButton();
@@ -367,16 +387,14 @@ public class PropertiesDialog extends javax.swing.JDialog {
                     .addComponent(jScrollPane2)
                     .addGroup(mainPanelLayout.createSequentialGroup()
                         .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(mainPanelLayout.createSequentialGroup()
-                                .addComponent(label6, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(27, 27, 27))
+                            .addComponent(label6, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(mainPanelLayout.createSequentialGroup()
                                 .addComponent(nameLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(1, 1, 1)
                                 .addComponent(shapeName)
                                 .addGap(1, 1, 1)
-                                .addComponent(nameLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                                .addComponent(nameLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(20, 20, 20)
                         .addComponent(figuresNimberField, javax.swing.GroupLayout.PREFERRED_SIZE, 226, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
@@ -397,7 +415,6 @@ public class PropertiesDialog extends javax.swing.JDialog {
         );
 
         nameLabel.getAccessibleContext().setAccessibleName("Name of ");
-        label6.getAccessibleContext().setAccessibleName("Description:");
 
         firstStringCodeField.setText("V1_def (Function name) <- function(S, V){");
 
@@ -415,16 +432,11 @@ public class PropertiesDialog extends javax.swing.JDialog {
             .addGroup(codeTPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(codeTPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(codeTPanelLayout.createSequentialGroup()
-                        .addGroup(codeTPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(lastStringCodeField)
-                            .addComponent(endString))
-                        .addContainerGap())
-                    .addGroup(codeTPanelLayout.createSequentialGroup()
-                        .addGroup(codeTPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(firstStringCodeField)
-                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 481, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addContainerGap())))
+                    .addComponent(lastStringCodeField)
+                    .addComponent(endString)
+                    .addComponent(firstStringCodeField)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 481, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
         codeTPanelLayout.setVerticalGroup(
             codeTPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -458,7 +470,6 @@ public class PropertiesDialog extends javax.swing.JDialog {
 
         properties.add(xButton);
         xButton.setText("O ( N )");
-        xButton.setActionCommand("O ( N )");
         xButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 xButtonActionPerformed(evt);
@@ -470,18 +481,25 @@ public class PropertiesDialog extends javax.swing.JDialog {
 
         properties.add(logButton);
         logButton.setText("O ( Log( N ) )");
-        logButton.setActionCommand("O ( Log( N ) )");
 
         properties.add(xlogButton);
         xlogButton.setText("O ( N * Log( N ) )");
-        xlogButton.setActionCommand("O ( N * Log( N ) )");
 
         properties.add(individCodeButton);
         individCodeButton.setText("Custom complexity function");
         individCodeButton.setAutoscrolls(true);
-        individCodeButton.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
-            public void propertyChange(java.beans.PropertyChangeEvent evt) {
-                individCodeButtonPropertyChange(evt);
+        individCodeButton.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                individCodeButtonItemStateChanged(evt);
+            }
+        });
+
+        properties.add(llmGeneratedCodeButton);
+        llmGeneratedCodeButton.setText(V_LLM_COMPLEXITY_NAME);
+        llmGeneratedCodeButton.setAutoscrolls(true);
+        llmGeneratedCodeButton.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                llmGeneratedCodeButtonItemStateChanged(evt);
             }
         });
 
@@ -490,20 +508,15 @@ public class PropertiesDialog extends javax.swing.JDialog {
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(expButton)
-                            .addComponent(xButton)
-                            .addComponent(stepButton)
-                            .addComponent(logButton)))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(xlogButton))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(individCodeButton)))
+                    .addComponent(expButton)
+                    .addComponent(xButton)
+                    .addComponent(stepButton)
+                    .addComponent(logButton)
+                    .addComponent(xlogButton)
+                    .addComponent(individCodeButton)
+                    .addComponent(llmGeneratedCodeButton))
                 .addGap(65, 65, 65))
         );
         jPanel1Layout.setVerticalGroup(
@@ -519,8 +532,11 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 .addComponent(logButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(xlogButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(individCodeButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(individCodeButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(llmGeneratedCodeButton)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout VpropertiesPanelLayout = new javax.swing.GroupLayout(VpropertiesPanel);
@@ -536,8 +552,8 @@ public class PropertiesDialog extends javax.swing.JDialog {
             VpropertiesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(VpropertiesPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         OpropertiesPanel.setVerifyInputWhenFocusTarget(false);
@@ -812,7 +828,6 @@ public class PropertiesDialog extends javax.swing.JDialog {
         nameOfElDefault.setText("var_nv1231");
 
         SaveNv.setText("Ok");
-        SaveNv.setActionCommand("Ok");
         SaveNv.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 SaveNvActionPerformed(evt);
@@ -868,6 +883,26 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 .addContainerGap())
         );
 
+        llmCodeTextField.setText("Eneter llm request here");
+        llmCodeScrollPanel.setViewportView(llmCodeTextField);
+
+        javax.swing.GroupLayout llmCodePanelLayout = new javax.swing.GroupLayout(llmCodePanel);
+        llmCodePanel.setLayout(llmCodePanelLayout);
+        llmCodePanelLayout.setHorizontalGroup(
+            llmCodePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(llmCodePanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(llmCodeScrollPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 481, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        llmCodePanelLayout.setVerticalGroup(
+            llmCodePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(llmCodePanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(llmCodeScrollPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 243, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(83, Short.MAX_VALUE))
+        );
+
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -894,14 +929,16 @@ public class PropertiesDialog extends javax.swing.JDialog {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(savePropBut)
-                .addGap(18, 18, 18)
-                .addComponent(cancelPropBut)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(mainBodyTabbedPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 379, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(savePropBut)
+                        .addGap(18, 18, 18)
+                        .addComponent(cancelPropBut)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(mainBodyTabbedPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 379, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -947,7 +984,14 @@ public class PropertiesDialog extends javax.swing.JDialog {
                         figOnWork.setVSelected(button.getText());
                     }
                 }
-                figOnWork.setCodeF(firstStringCodeField.getText()+"\n"+codeTextField.getText()+"\n"+lastStringCodeField.getText()+"\n}");
+                if (individCodeButton.isSelected()) {
+                    figOnWork.setCodeF(firstStringCodeField.getText()+"\n"+codeTextField.getText()+"\n"+lastStringCodeField.getText()+"\n}");
+                }
+                if (llmGeneratedCodeButton.isSelected()) {
+                    figOnWork.setLlmPrompt(llmCodeTextField.getText());
+                } else {
+                    figOnWork.setLlmPrompt("");
+                }
                 break;
             case "O":
                 figOnWork.setCoef(Ocoef.getText());
@@ -1151,7 +1195,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
         // TODO add your handling code here:
     }//GEN-LAST:event_OcoefActionPerformed
 
-    private void individCodeButtonPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_individCodeButtonPropertyChange
+    private void individCodeButtonItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_individCodeButtonItemStateChanged
         //Включили сложность свой код
         if (individCodeButton.isSelected()){
             addCodeWindowInProp();
@@ -1161,7 +1205,7 @@ public class PropertiesDialog extends javax.swing.JDialog {
                 mainBodyTabbedPanel.removeTabAt(2);
             }
         }
-    }//GEN-LAST:event_individCodeButtonPropertyChange
+    }//GEN-LAST:event_individCodeButtonItemStateChanged
 
     private void expButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_expButtonActionPerformed
         // TODO add your handling code here:
@@ -1195,8 +1239,22 @@ public class PropertiesDialog extends javax.swing.JDialog {
     private void signComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signComboBoxActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_signComboBoxActionPerformed
+
+    private void llmGeneratedCodeButtonItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_llmGeneratedCodeButtonItemStateChanged
+        if (llmGeneratedCodeButton.isSelected()){
+            addLlmCodeWindowInProp();
+        }
+        else{
+            if (mainBodyTabbedPanel.getTabCount()==3){
+                mainBodyTabbedPanel.removeTabAt(2);
+            }
+        }
+    }//GEN-LAST:event_llmGeneratedCodeButtonItemStateChanged
     private void addCodeWindowInProp(){
-        mainBodyTabbedPanel.addTab("Функция",codeTPanel); // добавление нужных окон делаем через этот метод
+        mainBodyTabbedPanel.addTab("Function", codeTPanel); // добавление нужных окон делаем через этот метод
+    }
+    private void addLlmCodeWindowInProp(){
+        mainBodyTabbedPanel.addTab("LLM Prompt", llmCodePanel);
     }
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
@@ -1251,6 +1309,10 @@ public class PropertiesDialog extends javax.swing.JDialog {
     private javax.swing.JLabel labelStandart;
     private javax.swing.JLabel labelStandart1;
     private javax.swing.JLabel lastStringCodeField;
+    private javax.swing.JPanel llmCodePanel;
+    private javax.swing.JScrollPane llmCodeScrollPanel;
+    private javax.swing.JTextPane llmCodeTextField;
+    private javax.swing.JRadioButton llmGeneratedCodeButton;
     private javax.swing.JRadioButton logButton;
     private javax.swing.JTabbedPane mainBodyTabbedPanel;
     private javax.swing.JPanel mainPanel;

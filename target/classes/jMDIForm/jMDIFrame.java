@@ -1,31 +1,18 @@
 package jMDIForm;
 
-//import point.pointStraight;
-//import point.points;
-//import line.LineStraight;
-//import line.Line;
-//import properties.PropertiesDialog;
 import java.awt.Toolkit;//для буфера обмена
 import java.awt.datatransfer.Clipboard;//для буфера обмена
 import java.awt.datatransfer.StringSelection;//для буфера обмена
 
-import converter.Figure_s;
-import converter.Line_s;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import EPM.mdi;
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import converter.ConvertedObject;
-import descritGen.generatorObj;
-import figure.*;
+import logic.serialization.model.ConvertedObject;
+import objects.figure.*;
+import objects.line.*;
+import objects.point.*;
 import java.awt.Cursor;
 import java.awt.Shape;
 import java.awt.geom.Point2D;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JComponent;
@@ -35,7 +22,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
@@ -44,12 +30,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.awt.geom.Rectangle2D;
-import java.io.FileWriter;
-import static java.lang.Math.abs;
 import java.util.Collections;
-import java.util.Dictionary;
-import java.util.Stack;
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -58,9 +39,12 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
-import rtranslator.CreateRCode;
-import rtranslator.RTranslatorClass;
-import rtranslator.newPrecodeGenerator;
+import domain.DiagramLoadResult;
+import logic.description.DescriptionService;
+import logic.graph.ConnectionPolicy;
+import logic.history.HistoryService;
+import logic.pagerank.PageRankService;
+import logic.serialization.DiagramSerializer;
 
 public class jMDIFrame extends JInternalFrame {
 
@@ -76,8 +60,8 @@ public class jMDIFrame extends JInternalFrame {
     public int y;
     Point2D p;// текущая точка
 
-    public Stack<DiagramState> history = new Stack<>();
     private final int MAX_HISTORY = 20; // Ограничение глубины истории
+    private final HistoryService historyService = new HistoryService(MAX_HISTORY);
     
     int dx = 0;//смещенные координаты курсора относительно фигуры при захвате объекта
     int dy = 0;
@@ -117,6 +101,11 @@ public class jMDIFrame extends JInternalFrame {
     int idIF=0;
     
     Point2D.Double p1,p2;
+
+    private final PageRankService pageRankService = new PageRankService();
+    private final ConnectionPolicy connectionPolicy = new ConnectionPolicy();
+    private final DiagramSerializer diagramSerializer = new DiagramSerializer();
+    private final DescriptionService descriptionService = new DescriptionService();
             
     
     private static final int RESIZE_ZONE_SIZE = 10; 
@@ -939,9 +928,13 @@ public class jMDIFrame extends JInternalFrame {
         //drawObjects();
     }
 
-    private void oneShapePoints(int i) {//обновляет массив с внутренними точками фигуры
+    private void oneShapePoints(int i) {//????????? ?????? ? ??????????? ??????? ??????
         pointShape.clear();
-        pointShape = points.get(i).getShape();//
+        if (points.isEmpty() || i < 0 || i >= points.size()) {
+            pointed = false;
+            return;
+        }
+        pointShape = points.get(i).getShape();
         pointed = true;
     }
 
@@ -1130,10 +1123,9 @@ public class jMDIFrame extends JInternalFrame {
     //Перемещение мышки с нажатой кнопкой
     private void moveobj(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_moveobj
 
-        
-        
-        
-        
+        if (all.isEmpty() || points.isEmpty()) {
+            return;
+        }
         figures b = all.get(0);
         ss = b.getShape();
 
@@ -1176,7 +1168,6 @@ public class jMDIFrame extends JInternalFrame {
             dy = -oldY + b.getYY();
             
             
-            //this.OutOfBounds();
             
              jPanel1.setComponentZOrder(b, 0);
             
@@ -1342,72 +1333,7 @@ public class jMDIFrame extends JInternalFrame {
     }//GEN-LAST:event_moveobj
 
     public ConvertedObject CreatorConvertObject() {
-        // Создаем список для хранения объектов Figure_s
-        ArrayList<Figure_s> figuresList = new ArrayList<>();
-
-        //Сохранение файла
-        for (figures f : all) {
-            Figure_s fig = new Figure_s();
-            String gType = f.getClass().toString();
-            //System.out.println(f.getShape().toString());
-            gType = gType.replace("class figure.", "");
-            fig.setX_pos(Integer.toString(f.getAbsoluteX()));
-            fig.setY_pos(Integer.toString(f.getAbsoluteY()));
-            fig.setShape(gType);
-            fig.setSize(Integer.toString(f.getSises()));
-            fig.setId(Integer.toString(f.getId()));
-            fig.setName(f.getNameF());
-            fig.setDescription(f.getDescriptionF());
-            fig.setCode(f.getCodeF());
-            fig.setNameNvElement(f.getNameNvElement());
-            fig.setVarNvElement(f.getVarNvElement());
-            fig.setSwork(String.valueOf((int) f.getSwork()));
-            fig.setLikelihood(f.getLikelihood());
-            fig.setPeriod(f.getPeriod());
-            fig.setCoef(f.getCoef());
-            fig.setVSelected(f.getVSelected());
-            fig.setIfSelected(f.getIfSelected());
-            fig.setIfNvElement(f.getIfNvElement());
-            fig.setSignIfSelected(f.getSignIfSelected());
-            fig.setCompareNumber(f.getCompareNumber());
-            // Добавляем объект Figure_s в список
-            figuresList.add(fig);
-        }
-        //сохраняем линии
-        ArrayList<Line_s> linesList = new ArrayList<>();
-        for (Line currentLine : lines) {
-            Line_s ln = new Line_s();
-            ln.SetID1(currentLine.getID1());
-            ln.SetID2(currentLine.getID2());
-            ln.SetId11(currentLine.getID11());
-            ln.SetId22(currentLine.getID22());
-            
-                    // Сохраняем абсолютные координаты (масштабируем обратно к 100%)
-            Point2D c1 = new Point2D.Double(
-                currentLine.getC1().getX() * 100.0 / zoom,
-                currentLine.getC1().getY() * 100.0 / zoom
-            );
-            Point2D c2 = new Point2D.Double(
-                currentLine.getC2().getX() * 100.0 / zoom,
-                currentLine.getC2().getY() * 100.0 / zoom
-            );
-            
-            ln.SetC1(c1);
-            ln.SetC2(c2);
-
-            linesList.add(ln);
-        }
-        
-        
-        
-        ConvertedObject cv = new ConvertedObject(
-                linesList, 
-                figuresList, 
-                zoom, 
-                idS, idNV, idV, idR, idO, idIF
-        );
-
-        return cv;
+        return diagramSerializer.createConvertedObject(all, lines, zoom, idS, idNV, idV, idR, idO, idIF);
     }
 
     //Сохранение файла
@@ -1415,12 +1341,7 @@ public class jMDIFrame extends JInternalFrame {
         try {
             //создание объекта со всеми фигурами и связями
             ConvertedObject co = CreatorConvertObject();
-            //co.setZoom(zoom);
-            
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.enable(SerializationFeature.INDENT_OUTPUT);
-            mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
-            mapper.writeValue(Paths.get(fn).toFile(), co);
+            diagramSerializer.saveToJson(fn, co);
             
             JOptionPane.showMessageDialog(this, "The file has been successfully saved!", "Message", JOptionPane.INFORMATION_MESSAGE);
             
@@ -1436,98 +1357,34 @@ public class jMDIFrame extends JInternalFrame {
     // *** Загружаем модель из файла JSON ***
     public void LoadFromJSON(String saveName) {
         try {
-            ObjectMapper om = new ObjectMapper();
-            // Читаем JSON из файла в виде строки
-            Path filePath = Path.of(saveName);
-            String jsonString = Files.readString(filePath);
-            ConvertedObject cv = om.readValue(jsonString, ConvertedObject.class);
-            
-            // Получаем сохраненный масштаб
-            int savedZoom = cv.getZoom(); 
-            zoom = savedZoom;
-            if (zoom == 0) {zoom = 100;}
-            
-            idS = cv.getIdS();
-            idNV = cv.getIdNV();
-            idV = cv.getIdV();
-            idR = cv.getIdR();
-            idO = cv.getIdO();
-            idIF = cv.getIdIF();
-            
-            
+            DiagramLoadResult result = diagramSerializer.loadFromJson(saveName);
+
+            zoom = result.getZoom();
+            idS = result.getIdS();
+            idNV = result.getIdNV();
+            idV = result.getIdV();
+            idR = result.getIdR();
+            idO = result.getIdO();
+            idIF = result.getIdIF();
+
             jSize.setText(String.format("%d", zoom) + '%');
-            
-            // Очищаем текущие данные
+
             all.clear();
-            lines.clear();   
-            
-            // Преобразуем JSON в список объектов Figure_s
-            List<Figure_s> figuresList = cv.getCurrentFigures();
-            
+            lines.clear();
 
-            // Преобразуем объекты Figure_s в объекты Figure
-            for (Figure_s fig : figuresList) {
-                readSaveData rs = new readSaveData();
-                figures loadedFigure = rs.getElement(fig);
-                
-                // Устанавливаем абсолютные координаты (без масштабирования)
-                loadedFigure.setAbsoluteX(Integer.parseInt(fig.getX_pos()));
-                loadedFigure.setAbsoluteY(Integer.parseInt(fig.getY_pos()));
-            
-                // Устанавливаем отображаемые координаты с учетом масштаба
-                loadedFigure.setXX((int) Math.round(loadedFigure.getAbsoluteX() * zoom / 100.0));
-                loadedFigure.setYY((int) Math.round(loadedFigure.getAbsoluteY() * zoom / 100.0));
-            
-                // Устанавливаем размер с учетом масштаба
-                loadedFigure.setS((int) Math.round(Integer.parseInt(fig.getSize()) ));//* zoom / 100.0));
-            
-                //loadedFigure.setSize(jPanel1.getWidth(), jPanel1.getHeight());
-                //loadedFigure.setVisible(true);
-                all.add(loadedFigure);
-            }
+            all.addAll(result.getFigures());
+            lines.addAll(result.getLines());
 
-            
-            //выводим линии из объекта сохранения
-            List<Line_s> lineList = cv.getCurrentLine();
-            for (Line_s line_from_file : lineList) {
-                // Масштабируем координаты точек линии
-                Point2D scaledC1 = new Point2D.Double(
-                    line_from_file.GetC1().getX() * zoom / 100.0,
-                    line_from_file.GetC1().getY() * zoom / 100.0
-                );
-                
-                Point2D scaledC2 = new Point2D.Double(
-                    line_from_file.GetC2().getX() * zoom / 100.0,
-                    line_from_file.GetC2().getY() * zoom / 100.0
-                );               
-
-                LineStraight ls = new LineStraight(
-                    scaledC1, scaledC2, 
-                    line_from_file.GetID1(),
-                    line_from_file.GetId11(), 
-                    line_from_file.GetID2(), 
-                    line_from_file.GetId22()
-                );                
-                
-                
-                
-                //ls.setSize(jPanel1.getWidth(), jPanel1.getHeight());
-                //ls.setVisible(true);                
-                lines.add(0, ls);
-            }
             lined = !lines.isEmpty();
-            fileName = saveName;   
+            fileName = saveName;
 
-            // Обновляем сетку с учетом масштаба
-            grid.SetCellSize((int) (GridPanel.GetBaseCellSize() * zoom / 100));            
-            
-            
+            grid.SetCellSize((int) (GridPanel.GetBaseCellSize() * zoom / 100));
+
             this.requestFocusInWindow();
-            // Обновляем размеры панели
             updatePanelSize();
             updateSch();
 
-            history.clear(); 
+            historyService.clear();
             saveState();
 
         } catch (Exception ex) {
@@ -1680,31 +1537,7 @@ public class jMDIFrame extends JInternalFrame {
                                 second = currentFigure; //.getClass();
                             }
                         }
-                        int cc = 0;// количество линий между объектами
-                        for (Line ln : lines) {
-                            if ((lines.get(0).getID1() == ln.getID1()) && (lines.get(0).getID2() == ln.getID2())) {
-                                cc += 1;
-                            }
-                        }
-
-                        //Если выполняется одно из условий то добавляем соединительную линию
-                        if (((first.getClass().equals(NV.class) && second.getClass().equals(V.class) && findLinkedFigToFig("NV",second.getNameF()))
-                                || //первая фигура - NV, вторая фигура - V ИЛИ
-                                (first.getClass().equals(S1.class) && second.getClass().equals(V.class) && findLinkedFigToFig("S1",second.getNameF()))
-                                || //первая фигура - S, вторая фигура - V ИЛИ
-                                (first.getClass().equals(V.class) && second.getClass().equals(R.class) && findLinkedFigToFig("V",second.getNameF()))
-                                || //первая фигура - V, вторая фигура - R ИЛИ
-                                (first.getClass().equals(R.class) && second.getClass().equals(NV.class))
-                                || //первая фигура - R, вторая фигура - NV ИЛИ
-                                (first.getClass().equals(R.class) && second.getClass().equals(V.class) && findLinkedFigToFig("R",second.getNameF()))
-                                || //первая фигура - R, вторая фигура - V ИЛИ
-                                (first.getClass().equals(R.class) && second.getClass().equals(d.class))
-                                || //первая фигура - R, вторая фигура - IF ИЛИ
-                                (first.getClass().equals(O.class) && second.getClass().equals(V.class) && findLinkedFigToFig("O",second.getNameF()))
-                                ||//первая фигура - O, вторая фигура - V ИЛИ
-                                (first.getClass().equals(d.class))) //первая фигура - IF
-                                && (cc == 1)//новая линия единственная между объектами
-                                ) {
+                        if (connectionPolicy.canConnect(first, second, lines, all)) {
                             if (!lined) {
                                 jPanel1.add(lines.get(0));
                             }
@@ -1754,28 +1587,7 @@ public class jMDIFrame extends JInternalFrame {
         //jPanel1.repaint();
 
     }//GEN-LAST:event_jPanel1MouseReleased
-    
-    private boolean findLinkedFigToFig(String startShape, String endName){
-        //поиск присоединенных классов к нужной фигуре
-        boolean isFirst = true;
-        for (Line ln : lines){
-            if (ln.getID2().equals(endName)){
-                for (figures fig : all){
-                    if (ln.getID1().equals(fig.getNameF())){
-                        if (fig.getClass().toString().replace("class figure.","").equals(startShape)){ //Если такой класс есть, то отмена
-                            if (isFirst){
-                                isFirst = false;
-                            }else{
-                                return false;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        System.out.println("3");
-        return true; //Если нету, то продолжаем
-    }
+
     private void clearActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearActionPerformed
         // TODO add your handling code here:
         // очищаем все
@@ -2300,15 +2112,13 @@ public class jMDIFrame extends JInternalFrame {
     }//GEN-LAST:event_copyDescrButActionPerformed
 
     private void toRCodeButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_toRCodeButActionPerformed
-        //генерация R кода
-        newPrecodeGenerator preCode = new newPrecodeGenerator(all);
-        RTranslatorClass newRTC = new RTranslatorClass(preCode.getPrecodeString()); //Создаем объект для перевода
-        newRTC.addString(textDescription.getText()); //Передаем текст с псевдокодом
-        textDescriptionRCode.setText(newRTC.getStringRCode()); //Записываем R код
+        //?????????????????? R ????????
+        String rCode = descriptionService.generateRCode(all, textDescription.getText());
+        textDescriptionRCode.setText(rCode); //?-?????????<???????? R ??????
 
-        rCodeActivatorBut.setEnabled(true); //активируем кнопки сохранения
+        rCodeActivatorBut.setEnabled(true); //?????'?????????????? ???????????? ?????:??????????????
         copyDescrButRCode.setEnabled(true);
-    }//GEN-LAST:event_toRCodeButActionPerformed
+    }//GEN-LAST:event_toRCodeButActionPerformed//GEN-LAST:event_toRCodeButActionPerformed
 
     private void copyDescrButRCodeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyDescrButRCodeActionPerformed
         copyToClipboard(textDescriptionRCode.getText());
@@ -2328,22 +2138,21 @@ public class jMDIFrame extends JInternalFrame {
     
     
     private void GenerateDescription() {
-        //Генерация псевдокогда
-        generatorObj genOb = new generatorObj(CreatorConvertObject());
-        String selfMaidCode = genOb.generateString();
-        textDescription.setText(selfMaidCode); //записываем псевдокод
-        textDescriptionRCode.setText(""); //обнуляем код R
-        rCodeActivatorBut.setEnabled(false); //диактивируем кнопки сохранения
+        //?"???????????????? ??????????????????????
+        String selfMaidCode = descriptionService.generateDescription(CreatorConvertObject());
+        textDescription.setText(selfMaidCode); //???????????<???????? ??????????????????
+        textDescriptionRCode.setText(""); //???+?????>?????? ?????? R
+        rCodeActivatorBut.setEnabled(false); //?????????'?????????????? ???????????? ?????:??????????????
         copyDescrButRCode.setEnabled(false);
         
         descrShowDialog.setDefaultCloseOperation(descrShowDialog.DISPOSE_ON_CLOSE);
         descrShowDialog.pack();
         descrShowDialog.setModal(true);
         descrShowDialog.setLocationRelativeTo(this);
-        // Автоматически подгоняем размер окна под содержимое
+        // ?????'???????'???????????? ?????????????????? ???????????? ???????? ?????? ??????????????????
         descrShowDialog.pack();
         
-        // Центрируем относительно экрана
+        // ???????'???????????? ???'?????????'???>?????? ????????????
         descrShowDialog.setLocationRelativeTo(null);
         descrShowDialog.setVisible(true);       
     }
@@ -2363,44 +2172,10 @@ public class jMDIFrame extends JInternalFrame {
                 Logger.getLogger(mdi.class.getName()).log(Level.SEVERE, null, ex);
             }
             System.out.println(file);
-            CreateRCode.saveInFile(textDescriptionRCode.getText(),file);
+            descriptionService.saveRCodeToFile(textDescriptionRCode.getText(),file);
         }
     }
-    private void OutOfBounds() {
-        // Рассчитываем правую и нижнюю границы видимой области панели
-        int visibleWidth = jScrollPane1.getViewport().getViewRect().width;
-        int visibleHeight = jScrollPane1.getViewport().getViewRect().height;
-        int rightBorder = jScrollPane1.getHorizontalScrollBar().getValue() + visibleWidth;
-        int bottomBorder = jScrollPane1.getVerticalScrollBar().getValue() + visibleHeight;
-
-        // Рассчитываем текущие размеры панели
-        int panelWidth = jPanel1.getWidth();
-        int panelHeight = jPanel1.getHeight();
-
-        // Проверяем, выходит ли фигура за границы видимой области
-        boolean outOfBoundsX = newX > rightBorder;
-        boolean outOfBoundsY = newY > bottomBorder;
-
-        if (outOfBoundsX || outOfBoundsY) {
-            // Рассчитываем на сколько фигура выходит за границы
-            int distanceX = outOfBoundsX ? Math.max(0, newX - rightBorder) + 100 : 0;
-            int distanceY = outOfBoundsY ? Math.max(0, newY - bottomBorder) + 100 : 0;
-
-            // Проверяем, выходит ли фигура за границы размера панели           
-            boolean outOfPanelBounds = newX > panelWidth || newY > panelHeight;
-
-            if (outOfPanelBounds) {
-                // Увеличиваем размеры панели на это расстояние
-                jPanel1.setPreferredSize(new Dimension(
-                        jPanel1.getPreferredSize().width + distanceX,
-                        jPanel1.getPreferredSize().height + distanceY
-                ));
-
-                // Перерисовываем панель
-                jPanel1.revalidate();
-            }
-        }
-    }
+    
 
     // Активация / деактивация кнопки Save 
     public void ButtonActivated() {
@@ -2464,298 +2239,11 @@ public class jMDIFrame extends JInternalFrame {
     }
     
     public double[][] PageRank(int iteration, double delta, double d) {
-        //инициализация матрицы
-        double[][] matrix = new double[all.size()][all.size()];
-        int size = matrix.length;
-        for (int column = 0; column < size; column++) {
-            for (int row = 0; row < size; row++) {
-                matrix[column][row] = 0;
-            }
-        }
-        
-        //заполнение матрицы связями        
-        for (Line line : lines) {
-            int start = 0; 
-            int end = 0;
-            int counter = 0;
-            for (figures figure : all) {
-                if (line.getID1().equals(figure.getNameF())) {
-                    start = counter;
-                    break;
-                }
-                counter++;
-            }
-            counter = 0;
-            for (figures figure : all) {
-                if (line.getID2().equals(figure.getNameF())) {
-                    end = counter;
-                    break;
-                }
-                counter++;
-            }
-            matrix[start][end] = 1;
-        }
-        
-        //нерабочий вариант заполнения матрицы связями
-//        for (Line line : lines) {
-//            matrix[line.getID22()-1][line.getID11()-1] = 1;
-//            }
-        
-        //объединение объектов V NV R   
-        ArrayList<figures> fig = (ArrayList<figures>) all.clone();
-        names = new String[size];
-        for (int i = 0; i < size; i++) {
-            names[i] = fig.get(i).getNameF();
-        }
-        boolean flag;
-        do {
-            flag = false;
-            for (int nv = 0; nv < size; nv++) {
-                if (nv >= fig.size() || !fig.get(nv).getNameF().startsWith("NV")) continue;
-                for (int v = 0; v < size; v++) {
-                    if (v >= fig.size() || matrix[nv][v] != 1.0 || !fig.get(v).getNameF().startsWith("V")) continue;
-                    for (int r = 0; r < size; r++) {
-                        if (r >= fig.size() || matrix[v][r] != 1.0 || !fig.get(r).getNameF().startsWith("R")) continue;
-                        matrix = MergeMatrix(matrix, r, nv, v);
-
-                        // Создаём новый массив имён
-                        String[] newNames = new String[size - 2];
-                        int counter = 0;
-
-                        for (int i = 0; i < size; i++) {
-                            if (i == v || i == r) continue;
-                            if (i == nv) {
-                                newNames[counter] = names[nv] + "->" + names[v] + "->" + names[r];
-                            } else {
-                                newNames[counter] = names[i];
-                            }
-                            counter++;
-                        }
-                        names = newNames;
-
-                        if (v > nv) {
-                            fig.remove(v);
-                            fig.remove(nv);
-                        } else {
-                            fig.remove(nv);
-                            fig.remove(v);
-                        }
-                        size -= 2;
-                        flag = true;
-                        break;
-                    }
-                    if (flag) break;
-                }
-                if (flag) break;
-            }
-        } while (flag);
-        
-        
-        //меняем на количество ссылок
-        for (int row = 0; row < size; row++) {
-            int counter = 0;
-            for (int column = 0; column < size; column++) {
-                if (matrix[column][row] == 1)
-                    counter++;
-            }
-            for (int column = 0; column < size; column++) {
-                if (matrix[column][row] == 1)
-                    matrix[column][row] = 1.0/counter;
-            }
-        }
-        
-        //заменяем 0 столбцы на 1/N
-        for (int j = 0; j < size; j++) {
-            int columnSum = 0;
-            for (int i = 0; i < size; i++) {
-                columnSum += matrix[i][j];
-            }
-            if (columnSum == 0) {
-                for (int i = 0; i < size; i++) {
-                    matrix[i][j] = 1.0/size;
-                }
-            }
-        }
-        
-        //собираем в формулу
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                matrix[i][j] = d*matrix[i][j]+(1-d)/size;
-            }
-        }
-        
-        double[][] pageRank;
-        //вычисление за n итераций
-        if (iteration > 0)
-            pageRank = MultiplyMatrixIteration(matrix, iteration);
-        
-        //вычисление с заданной точностью
-        else
-            pageRank = MultiplyMatrixUntilDelta(matrix, delta);
-        
-        return pageRank;
-    }
-    
-    protected double[][] MergeMatrix(double[][] matrix, int row1, int row2, int row3) {
-        int n = matrix.length;
-        double[][] newMatrix = new double[n-2][n-2];
-        
-        
-        for (int i = 0; i < n; i++) {
-            if (i != row1) {
-                matrix[i][row1] = Math.max(matrix[i][row1], Math.max(matrix[i][row2], matrix[i][row3]));
-                matrix[i][row2] = Math.max(matrix[i][row1], Math.max(matrix[i][row2], matrix[i][row3]));
-                matrix[i][row3] = Math.max(matrix[i][row1], Math.max(matrix[i][row2], matrix[i][row3]));
-            }
-        }
-        
-        for (int j = 0; j < n; j++) {
-            if (j != row1 && j != row2 && j != row3) {
-                matrix[row1][j] = Math.max(matrix[row1][j], Math.max(matrix[row2][j], matrix[row3][j]));
-                matrix[row2][j] = Math.max(matrix[row1][j], Math.max(matrix[row2][j], matrix[row3][j]));
-                matrix[row3][j] = Math.max(matrix[row1][j], Math.max(matrix[row2][j], matrix[row3][j]));
-            }
-        }
-        
-        int newRow = 0;
-        for (int i = 0; i < n; i++) {
-            if (i == row2 || i == row3)
-                continue;
-            int newCol = 0;
-            for (int j = 0; j < n; j++) {
-                if (j == row2 || j == row3)
-                    continue;
-                newMatrix[newRow][newCol] = matrix[i][j];
-                newCol++;
-            }
-            newRow++;
-        }
-        
-        
-        
-        return newMatrix;
+        PageRankService.PageRankResult result = pageRankService.pageRank(all, lines, iteration, delta, d);
+        names = result.getNames();
+        return result.getMatrix();
     }
 
-
-    
-    protected double[][] MultiplyMatrixIteration(double[][] matrix, int iteration) {
-        int size = matrix.length;
-        //инициализация вектора
-        double[] vector = new double[size];
-        for (int i = 0; i < size; i++)
-            vector[i] = 1;
-        double[] newVector = new double[size];
-        double[][] pageRank = new double[iteration][size];
-        
-        //вычисление
-        for (int iter = 0; iter < iteration; iter++) {
-            for (int i = 0; i < size; i++) {
-                newVector[i] = 0;
-                for (int j = 0; j < size; j++) {
-                    newVector[i] += matrix[i][j] * vector[j];
-                }
-            }
-            vector = newVector.clone();
-            pageRank[iter] = vector.clone();
-        }
-        return pageRank;
-    }
-    
-    protected double[][] MultiplyMatrixUntilDelta(double[][] matrix, double delta) {
-        int size = matrix.length;
-        double[] newVector = new double[size];
-        double maxDifference;
-        double[] vector = new double[size];
-        for (int i = 0; i < size; i++)
-            vector[i] = 1;
-
-        // Список для хранения всех вектор-столбцов
-        List<double[]> history = new ArrayList<>();
-
-        do {
-            maxDifference = 0;
-
-            for (int i = 0; i < size; i++) {
-                newVector[i] = 0;
-                for (int j = 0; j < size; j++) {
-                    newVector[i] += matrix[i][j] * vector[j];
-                }
-                maxDifference = Math.max(maxDifference, Math.abs(newVector[i] - vector[i]));
-            }
-
-            vector = newVector.clone();
-            history.add(vector.clone());
-
-        } while (maxDifference >= delta);
-
-        // Преобразуем список в массив
-        double[][] pageRank = new double[history.size()][size];
-        for (int i = 0; i < history.size(); i++) {
-            pageRank[i] = history.get(i);
-        }
-
-        return pageRank;
-    }
-
-    
-    //определитель матрицы
-    protected double Determinant(double[][] matrix) {
-        double determinant = 0;
-        if (matrix.length == 1)
-            return matrix[0][0];
-        else {
-            for (int j = 0; j < matrix.length; j++) {
-                double[][] minor_matrix = MatrixMinor(matrix, 0, j);
-                determinant += matrix[0][j] * Math.pow(-1, j) * Determinant(minor_matrix);
-            }
-            return determinant;
-        }
-    }
-    
-    //минор матрицы
-    protected double[][] MatrixMinor(double[][] matrix, int rowToDelete, int columnToDelete) {
-        int size = matrix.length;
-        double[][] minorMatrix = new double[size - 1][size - 1];
-
-        int newRow = 0;
-        for (int i = 0; i < size; i++) {
-            if (i == rowToDelete) continue;
-        
-            int newCol = 0;
-            for (int j = 0; j < size; j++) {
-                if (j == columnToDelete) continue;
-            
-                minorMatrix[newRow][newCol] = matrix[i][j];
-                newCol++;
-            }
-            newRow++;
-        }
-        return minorMatrix;
-    }
-    
-    //транспонирование матрицы
-    protected double[][] Transposition(double[][] matrix) {
-        double[][] newMatrix = matrix;
-        for (int i = 0; i < matrix.length; i++) {
-            for (int j = 0; j < matrix.length; j++) {
-                newMatrix[i][j] = matrix[j][i];
-            }
-        }
-        
-        return newMatrix;
-    }
-    
-    //обратная матрица
-    protected double[][] InverseMatrix(double matrix[][], double determinant) {
-        double[][] inverseMatrix = new double[matrix.length][matrix.length];
-        for (int i = 0; i < matrix.length; i++) {
-            for (int j = 0; j < matrix.length; j++) {
-                inverseMatrix[i][j] = Determinant(MatrixMinor(matrix, j, i))/determinant;
-            }
-        }
-        return inverseMatrix;
-    }
-    
     public int СyclomaticСomplexity() {
         int E = lines.size();
         int N = all.size();
@@ -2914,31 +2402,31 @@ public class jMDIFrame extends JInternalFrame {
     }
     
     public void saveState() {
-        if (history.size() >= MAX_HISTORY) {
-            history.remove(0); // Удаляем самое старое состояние
-        }
-        
-        history.push(new DiagramState(all, lines, zoom));
+        historyService.saveState(all, lines, zoom);
     }
     
     public void undo() {
-        if (!history.isEmpty()) {
-            DiagramState state = history.pop();
+        DiagramState state = historyService.undo();
+        if (state != null) {
             all = state.getFigures();
             lines = state.getLines();
             zoom = state.getZoom();
-        
-            // Обновляем UI
+
+            // Рефреш UI
             jSize.setText(String.format("%d", zoom) + '%');
             grid.SetCellSize((int) ((GridPanel.GetBaseCellSize() * zoom) / 100));
-            
+
             addPoints(zoom);
-            updatePanelSize(); // обновление размеров панели
+            updatePanelSize(); // Обновление размера панели
             updateSch();
 
             change_idx = true;
             ButtonActivated();
         }
+    }
+
+    public void clearHistory() {
+        historyService.clear();
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

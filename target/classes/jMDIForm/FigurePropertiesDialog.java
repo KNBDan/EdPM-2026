@@ -1,6 +1,6 @@
 //КОД для теоритического окна, не использщуется
 package jMDIForm;
-import figure.figures;
+import objects.figure.figures;
 
 import javax.swing.*;
 import java.awt.*;

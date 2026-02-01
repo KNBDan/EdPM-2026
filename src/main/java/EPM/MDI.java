@@ -2,14 +2,14 @@ package EPM;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jdi.Method;
-import converter.ConvertedObject;
-import figure.figures;
-import figure.NV;
-import figure.R;
-import figure.V;
-import figure.S1;
-import figure.O;
-import figure.d;
+import logic.serialization.model.ConvertedObject;
+import objects.figure.figures;
+import objects.figure.NV;
+import objects.figure.R;
+import objects.figure.V;
+import objects.figure.S1;
+import objects.figure.O;
+import objects.figure.d;
 import jMDIForm.GridPanel;
 import jMDIForm.PageRankFrame;
 import jMDIForm.jMDIFrame;
@@ -1580,7 +1580,7 @@ public class mdi extends javax.swing.JFrame {
         
         //jDesktopPane.add(iFrame);
         addNewFrame(iFrame);
-        iFrame.history.clear(); 
+        iFrame.clearHistory();
 
         iFrame.toFront();
         iFrame.setVisible(true);

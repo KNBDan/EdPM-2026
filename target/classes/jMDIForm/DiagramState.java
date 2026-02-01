@@ -3,15 +3,15 @@ package jMDIForm;
 
 
 
-import figure.Line;
-import figure.LineStraight;
-import figure.NV;
-import figure.O;
-import figure.R;
-import figure.S1;
-import figure.V;
-import figure.d;
-import figure.figures;
+import objects.line.Line;
+import objects.line.LineStraight;
+import objects.figure.NV;
+import objects.figure.O;
+import objects.figure.R;
+import objects.figure.S1;
+import objects.figure.V;
+import objects.figure.d;
+import objects.figure.figures;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
