@@ -110,6 +110,8 @@ public class BasicFunctionCode {
 "                 R=vector(mode = \"numeric\", length = length(N)), \n" +
 "                 ID_File=vector(mode = \"numeric\", length = length(N)), \n" +
 "                 ID_Out=vector(mode = \"numeric\", length = length(N)))\n" +
+"  Df$ID_File<-rep(list(0), length(N))\n" +
+"  Df$ID_Out<-rep(list(0), length(N))\n" +
 "  j<-1\n" +
 "  L<-0\n" +
 "  for (i in 1:N){\n" +
@@ -140,8 +142,10 @@ public class BasicFunctionCode {
 "  \n" +
 "  Df$R[1]<-0\n" +
 "  Df$R[2:N]<-P1[1:(N-1)]\n" +
-"  Df$ID_Out[1]<-0\n" +
-"  Df$ID_Out[2:N]<-P2[1:(N-1)]\n" +
+"  Df$ID_Out[1]<-list(0)\n" +
+"  if (N > 1) {\n" +
+"    Df$ID_Out[2:N]<-P2[1:(N-1)]\n" +
+"  }\n" +
 "  V1<-Df\n" +
 "}\n" +
 "\n" +

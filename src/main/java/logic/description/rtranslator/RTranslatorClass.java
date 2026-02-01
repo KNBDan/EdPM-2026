@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.prefs.Preferences;
 import logic.description.rtranslator.CreateRCode;
 
@@ -32,6 +33,9 @@ public class RTranslatorClass {
     private final ArrayList<String> vFunctionNames = new ArrayList<>();
     private final Map<String, String> sCodeByName = new HashMap<>();
     private final Map<String, String> nvSourceByName = new HashMap<>();
+    private final Map<String, String> deferredRLines = new HashMap<>();
+    private final Map<String, Set<String>> deferredRDeps = new HashMap<>();
+    private final ArrayList<String> deferredROrder = new ArrayList<>();
     
     public RTranslatorClass(String preCode) {
         this.preCode = preCode;
@@ -58,6 +62,7 @@ public class RTranslatorClass {
         return CreateRCode.generateCodeRFromString(preCode + "\n" + vFuncsBlock,rows); //Сохраняем в файл
     }
     public void addString(String text) {
+        prePassCache(text);
         rows.add("N <- "+startN);
         for (String strg : text.split("\n")) { //перепор каждой строки
             if (strg.length() == 0){
@@ -100,9 +105,13 @@ public class RTranslatorClass {
                     cacheSCode(strg);
                     continue;
             }
+            if (forAdding.isEmpty()) {
+                continue;
+            }
             rows.add(forAdding); //Добавляем полученную строку/строкИ в массив с готовыми строками (если нужно хранить именно строку стоит 
             //перед добавлением полученную строку разделить по \n
         }
+        appendDeferredRLines();
         for (String strg : rows) {
             System.out.println(strg);
         }
@@ -112,15 +121,124 @@ public class RTranslatorClass {
 //        return CreateRCode.generateCodeRFromString(preCode,rows); //Сохраняем в файл
 //        (rFilePath+"/"+rFileName+".R") Указание сохранения файла R
     }
+    private void prePassCache(String text) {
+        for (String strg : text.split("\n")) {
+            if (strg.length() == 0) {
+                continue;
+            }
+            strg = strg.replace("    ", "");
+            char shape = strg.charAt(0);
+            if (shape == 'S') {
+                cacheSCode(strg);
+            } else if (shape == 'N') {
+                cacheNvSource(strg);
+            }
+        }
+    }
+
+    private void appendDeferredRLines() {
+        if (deferredRLines.isEmpty()) {
+            return;
+        }
+        ArrayList<String> ordered = topoSortDeferred();
+        for (String rName : ordered) {
+            String line = deferredRLines.get(rName);
+            if (line != null && !line.isEmpty()) {
+                rows.add(line);
+                String plot = buildRPlotXesLines(rName);
+                if (!plot.isEmpty()) {
+                    rows.add(plot);
+                }
+            }
+        }
+        deferredRLines.clear();
+        deferredRDeps.clear();
+        deferredROrder.clear();
+    }
+
+    private ArrayList<String> topoSortDeferred() {
+        Map<String, Integer> inDeg = new HashMap<>();
+        Map<String, Set<String>> deps = new HashMap<>();
+        for (String name : deferredRLines.keySet()) {
+            Set<String> d = deferredRDeps.getOrDefault(name, new LinkedHashSet<>());
+            Set<String> filtered = new LinkedHashSet<>();
+            for (String dep : d) {
+                if (deferredRLines.containsKey(dep)) {
+                    filtered.add(dep);
+                }
+            }
+            deps.put(name, filtered);
+            inDeg.put(name, filtered.size());
+        }
+        ArrayList<String> result = new ArrayList<>();
+        ArrayList<String> queue = new ArrayList<>();
+        for (String name : deferredROrder) {
+            if (inDeg.getOrDefault(name, 0) == 0) {
+                queue.add(name);
+            }
+        }
+        Set<String> queued = new HashSet<>(queue);
+        while (!queue.isEmpty()) {
+            String cur = queue.remove(0);
+            result.add(cur);
+            for (Map.Entry<String, Set<String>> e : deps.entrySet()) {
+                if (e.getValue().contains(cur)) {
+                    int deg = inDeg.get(e.getKey()) - 1;
+                    inDeg.put(e.getKey(), deg);
+                    if (deg == 0 && !queued.contains(e.getKey())) {
+                        queue.add(e.getKey());
+                        queued.add(e.getKey());
+                    }
+                }
+            }
+        }
+        for (String name : deferredROrder) {
+            if (!result.contains(name)) {
+                result.add(name);
+            }
+        }
+        return result;
+    }
+
+    private String buildRPlotXesLines(String rName) {
+        if (!isPlotActive) {
+            return "";
+        }
+        String rCodeString = "";
+        rCodeString +=  "\n"+ space() +"plot(1:N, "+rName+"$R, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"Element "+rName+"\")" +
+            "\n" + space() + "plot(1:N, "+rName+"$Prj_File, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"Element "+rName+"\")";
+        if (isXESActive){
+            rCount+=1;
+            String xName = "X";
+            if (rCount == 1){
+                rCodeString+="\n" + space() +"X1<-XES("+rName+")";
+                rCodeString+="\n" + space() +xName+"<-XES("+rName+")";
+                rCodeString+="\n" + space() + "if (length(X1$W) > 0) vioplot(X1$W, col = \"lightgray\", panel.first=grid(), main = \"Element "+rName+"\")";
+            }else{
+                xName += rCount;
+                rCodeString+="\n"+ space() +xName+"<-XES("+rName+")"
+                        +"\n" + space() + "X<-rbind(X,"+xName+")";
+                rCodeString+="\n" + space() + "if (length("+xName+"$W) > 0) vioplot("+xName+"$W, col = \"lightgray\", panel.first=grid(), main = \"Element "+rName+"\")";
+            }
+            rCodeString+= "\n" + space() + "if (length(X$W) > 0) vioplot(X$W, col = \"lightgray\", panel.first=grid(), main = \"All elements before "+rName+"\")";
+        }
+        return rCodeString;
+    }
+
     public String generateWriteCode(){
         String rCodeString = "";
         String spr_num = Integer.toString(idNumber-idStep); //Значение S_prob  (вычитаем шаг чтобы было корректное значнеие) (всегда последнее id в S)
         if (rCount >1){
-            rCodeString += "vioplot(";
-            for (int i = 1; i <= rCount;i++){ //перечисляем все X от каждого R, кроме первого (его нет)
-                rCodeString+= "X"+Integer.toString(i)+"$W,";
+            StringBuilder xList = new StringBuilder();
+            for (int i = 1; i <= rCount;i++){
+                xList.append("X").append(i).append("$W,");
             }
-            rCodeString +=" col = \"lightgray\",  panel.first=grid())+\n";
+            if (xList.length() > 0) {
+                xList.setLength(xList.length() - 1);
+            }
+            rCodeString += "X_list <- list(" + xList + ")\n";
+            rCodeString += "X_list <- X_list[sapply(X_list, length) > 0]\n";
+            rCodeString += "if (length(X_list) > 0) do.call(vioplot, c(X_list, list(col = \"lightgray\", panel.first=grid())))\n";
         }
         rCodeString += "l<-unique(X$ID)";
         if (ifDetector){ //цикл был вставляем в код
@@ -130,7 +248,7 @@ public class RTranslatorClass {
         "\nfor (i in 1:length(l)){" +
         "\n  s_last[i]<-sum(X$W[X$ID==l[i]])" +
         "\n}" +
-        "\nvioplot(s_last, col = \"lightgray\",  panel.first=grid())";
+        "\nif (length(s_last) > 0) vioplot(s_last, col = \"lightgray\", panel.first=grid())";
         rCodeString += "\nwrite.csv(X, file=\""+xesFileName+".csv\")";
         return rCodeString;
     }
@@ -183,16 +301,16 @@ public class RTranslatorClass {
         return rCodeString;
     }
 
-    public String generateRCodeR(String exCode) { //??????????? ???? ????? R ??? ?????? R
+    public String generateRCodeR(String exCode) { //R code generation for R figure
         String rCodeString = "";
-        String rName = exCode.split(" = ")[0]; //??? R
-        String vName = exCode.split(" = ")[1].split("\\(")[0]; //??? V
+        String rName = exCode.split(" = ")[0]; //R name
+        String vName = exCode.split(" = ")[1].split("\\(")[0]; //V name
         String[] allInProp = exCode.split(" = ")[1].split("\\(")[1].split("\\)")[0].split("\\,");
-        String type = allInProp[0]; //?????????
+        String type = allInProp[0]; //complexity
         String[] srFig = allInProp[1].split(" \\+ ");
-        String[] nvFig = allInProp[2].split(" \\+ "); //?????? ???? nv //???? ?? ??????????
-        String[] oFig = allInProp[3].split(" \\+ "); //?????? ???? o //???? ?? ??????????
-        String oNum = "1"; //???????? ????????? O ?? ?????????
+        String[] nvFig = allInProp[2].split(" \\+ "); //all NV inputs (not used directly)
+        String[] oFig = allInProp[3].split(" \\+ "); //all O inputs (not used directly)
+        String oNum = "1"; //default O value
 
         boolean hasS = !srFig[0].equals("NULL");
         boolean hasNV = !nvFig[0].equals("NULL");
@@ -207,8 +325,8 @@ public class RTranslatorClass {
             srResult = srBlockGenForFunction(nvFig, rInputName, vName);
         }
         String srElement = srResult.srElement;
-        if (isActiveO && !(oFig[0].equals(" NULL"))){ //???? ????? ???????? O
-            oNum =  exCode.split("\\(")[2].split("\\)")[0]; //????????? ???????? O ?? ???????? ???????????? O
+        if (isActiveO && !(oFig[0].equals(" NULL"))){ //use O if enabled
+            oNum =  exCode.split("\\(")[2].split("\\)")[0]; //read O value from input
         }
 
         String vFuncName = vName + "_func";
@@ -218,23 +336,28 @@ public class RTranslatorClass {
         String callArgs = buildVFuncCallArgs(rInputName, externalRInputs);
         rCodeString = space() + rName + "<- " + vFuncName + "(" + callArgs + ")";
         
-        if (isPlotActive){ //?????? ??? R
-            rCodeString +=  "\n"+ space() +"plot(1:N, "+rName+"$R, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"??????? "+rName+"\")" +
-            "\n" + space() + "plot(1:N, "+rName+"$Prj_File, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"??????? "+rName+"\")";
-            if (isXESActive){ // ?????? ??? X
+        if (numSpace == 0) {
+            deferTopLevelR(rName, rCodeString, rInputName, externalRInputs);
+            return "";
+        }
+
+        if (isPlotActive){ //plots for R
+            rCodeString +=  "\n"+ space() +"plot(1:N, "+rName+"$R, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"Element "+rName+"\")" +
+            "\n" + space() + "plot(1:N, "+rName+"$Prj_File, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = \"Element "+rName+"\")";
+            if (isXESActive){ //plots for X
                 rCount+=1;
                 String xName = "X";
                 if (rCount == 1){
                     rCodeString+="\n" + space() +"X1<-XES("+rName+")";  
                     rCodeString+="\n" + space() +xName+"<-XES("+rName+")";
-                    rCodeString+="\n" + space() + "vioplot(X1$W, col = \"lightgray\",  panel.first=grid(), main = \"??????? "+rName+"\")";
+                    rCodeString+="\n" + space() + "if (length(X1$W) > 0) vioplot(X1$W, col = \"lightgray\", panel.first=grid(), main = \"Element "+rName+"\")";
                 }else{
                     xName += rCount;
                     rCodeString+="\n"+ space() +xName+"<-XES("+rName+")"
                             +"\n" + space() + "X<-rbind(X,"+xName+")";
-                    rCodeString+="\n" + space() + "vioplot("+xName+"$W, col = \"lightgray\",  panel.first=grid(), main = \"??????? "+rName+"\")";
+                    rCodeString+="\n" + space() + "if (length("+xName+"$W) > 0) vioplot("+xName+"$W, col = \"lightgray\", panel.first=grid(), main = \"Element "+rName+"\")";
                 }
-                rCodeString+= "\n" + space() + "vioplot(X$W, col = \"lightgray\",  panel.first=grid(), main = \"??? ???????? ?? "+rName+"\")";
+                rCodeString+= "\n" + space() + "if (length(X$W) > 0) vioplot(X$W, col = \"lightgray\", panel.first=grid(), main = \"All elements before "+rName+"\")";
             }
         }
         
@@ -251,7 +374,7 @@ public class RTranslatorClass {
         
         String readyElement = "";
         
-        if (inFigures.size() == 1) { //???? ?????? ???? ??????? (?????? ??? ADD)
+        if (inFigures.size() == 1) { //only one input (no ADD)
             String curFig = inFigures.remove(0);
             if (curFig.charAt(0) == ('R')) {
                 String nvName = "NV_in_" + vName;
@@ -267,7 +390,7 @@ public class RTranslatorClass {
             readyElement += "Add(";
 
             String curFig = inFigures.remove(0);
-            if (curFig.charAt(0) == ('R')) { //???? ?????? r ???????????? ? NV
+            if (curFig.charAt(0) == ('R')) { //if input is R, convert to NV
                 String nvName = "NV_in_" + vName + "_" + inFigures.size();
                 String rVar = (rInputName != null && curFig.equals(rInputName)) ? "R_in" : curFig;
                 localPreCode.append(generateNVFromRVar(nvName, rVar)).append("\n");
@@ -275,7 +398,7 @@ public class RTranslatorClass {
             }
             readyElement += curFig + ",";
         }
-        //?????? ????????? ????????? ?????? ? ??????
+        //add last figure
         String curFig = inFigures.remove(0);
         if (curFig.charAt(0) == ('R')) {
                String nvName = "NV_in_" + vName + "_" + inFigures.size();
@@ -290,7 +413,8 @@ public class RTranslatorClass {
 
     private String generateNVFromRVar(String nvName, String rVar){
         return nvName + "<-subset( " + rVar + ", select=c(R, ID_Out))\n"
-            + "colnames( " + nvName + " ) <- c('S', 'ID')";
+            + "colnames( " + nvName + " ) <- c('S', 'ID')\n"
+            + nvName + "$ID <- lapply(" + nvName + "$ID, function(x) { if (is.list(x)) x else list(x) })";
     }
 
     private void ensureVFunctionDefined(
@@ -331,6 +455,21 @@ public class RTranslatorClass {
         vFunctionDefs.add(func.toString());
     }
 
+    private void deferTopLevelR(String rName, String rLine, String rInputName, ArrayList<String> externalRInputs) {
+        if (!deferredRLines.containsKey(rName)) {
+            deferredROrder.add(rName);
+        }
+        deferredRLines.put(rName, rLine);
+        Set<String> deps = new LinkedHashSet<>();
+        if (rInputName != null) {
+            deps.add(rInputName);
+        }
+        if (externalRInputs != null) {
+            deps.addAll(externalRInputs);
+        }
+        deferredRDeps.put(rName, deps);
+    }
+
     private String findFirstRInput(String[] srFig) {
         for (String fig : srFig) {
             String trimmed = fig.trim();
@@ -351,6 +490,21 @@ public class RTranslatorClass {
         }
     }
 
+    private ArrayList<String> parseRList(String rExpr) {
+        ArrayList<String> res = new ArrayList<>();
+        if (rExpr == null) {
+            return res;
+        }
+        String[] parts = rExpr.split("\\+");
+        for (String part : parts) {
+            String name = part.trim();
+            if (!name.isEmpty()) {
+                res.add(name);
+            }
+        }
+        return res;
+    }
+
     private void cacheSCode(String exCode) {
         String name = exCode.split(" = ")[0];
         String code = generateSCodeR(exCode);
@@ -359,8 +513,8 @@ public class RTranslatorClass {
 
     private void cacheNvSource(String exCode) {
         String nvName = exCode.split(" = ")[0];
-        String rName = exCode.split(" = ")[1];
-        nvSourceByName.put(nvName, rName);
+        String rExpr = exCode.split(" = ")[1];
+        nvSourceByName.put(nvName, rExpr);
     }
 
     private void appendSCode(StringBuilder func, String[] srFig) {
@@ -396,23 +550,44 @@ public class RTranslatorClass {
             if (added.contains(nvName)) {
                 continue;
             }
-            String rName = nvSourceByName.get(nvName);
-            if (rName == null || rName.isEmpty()) {
+            String rExpr = nvSourceByName.get(nvName);
+            if (rExpr == null || rExpr.isEmpty()) {
                 continue;
             }
-            String rVar;
-            if (rInputName != null && rName.equals(rInputName)) {
-                rVar = "R_in";
-            } else if (externalRInputs != null && externalRInputs.contains(rName)) {
-                rVar = buildExternalParamName(rName);
-            } else {
-                rVar = rName;
-            }
-            String nvCode = generateNVFromRVar(nvName, rVar);
-            for (String line : nvCode.split("\n")) {
-                if (!line.isEmpty()) {
-                    func.append("  ").append(line).append("\n");
+            ArrayList<String> rNames = parseRList(rExpr);
+            ArrayList<String> nvParts = new ArrayList<>();
+            int idx = 1;
+            for (String rName : rNames) {
+                String rVar;
+                if (rInputName != null && rName.equals(rInputName)) {
+                    rVar = "R_in";
+                } else if (externalRInputs != null && externalRInputs.contains(rName)) {
+                    rVar = buildExternalParamName(rName);
+                } else {
+                    rVar = rName;
                 }
+                String partName = nvName + "_p" + idx;
+                idx += 1;
+                String nvCode = generateNVFromRVar(partName, rVar);
+                for (String line : nvCode.split("\n")) {
+                    if (!line.isEmpty()) {
+                        func.append("  ").append(line).append("\n");
+                    }
+                }
+                nvParts.add(partName);
+            }
+            if (nvParts.size() == 1) {
+                func.append("  ").append(nvName).append(" <- ").append(nvParts.get(0)).append("\n");
+            } else if (nvParts.size() > 1) {
+                String addExpr = "Add(";
+                for (int i = 0; i < nvParts.size(); i++) {
+                    if (i > 0) {
+                        addExpr += ",";
+                    }
+                    addExpr += nvParts.get(i);
+                }
+                addExpr += ")";
+                func.append("  ").append(nvName).append(" <- ").append(addExpr).append("\n");
             }
             added.add(nvName);
         }
@@ -436,15 +611,18 @@ public class RTranslatorClass {
             if (nvName.equals("NULL") || nvName.isEmpty()) {
                 continue;
             }
-            String rName = nvSourceByName.get(nvName);
-            if (rName == null || rName.isEmpty()) {
+            String rExpr = nvSourceByName.get(nvName);
+            if (rExpr == null || rExpr.isEmpty()) {
                 continue;
             }
-            if (rInputName != null && rName.equals(rInputName)) {
-                continue;
-            }
-            if (!result.contains(rName)) {
-                result.add(rName);
+            ArrayList<String> rNames = parseRList(rExpr);
+            for (String rName : rNames) {
+                if (rInputName != null && rName.equals(rInputName)) {
+                    continue;
+                }
+                if (!result.contains(rName)) {
+                    result.add(rName);
+                }
             }
         }
         return result;
