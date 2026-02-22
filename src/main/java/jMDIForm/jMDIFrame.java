@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.List;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -41,6 +42,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import domain.DiagramLoadResult;
 import logic.description.DescriptionService;
+import logic.description.microservice.MicroserviceGenerationResult;
+import logic.description.microservice.MicroserviceRBundleGenerator;
 import logic.graph.ConnectionPolicy;
 import logic.history.HistoryService;
 import logic.pagerank.PageRankService;
@@ -213,6 +216,9 @@ public class jMDIFrame extends JInternalFrame {
         textDescriptionRCode = new javax.swing.JTextArea();
         copyDescrButRCode = new javax.swing.JButton();
         rCodeActivatorBut = new javax.swing.JButton();
+        SequentialRadioButton = new javax.swing.JRadioButton();
+        MicroserviceRadioButton = new javax.swing.JRadioButton();
+        CodeGenerationMethod = new javax.swing.ButtonGroup();
         jScrollPane1 = new javax.swing.JScrollPane();
         jPanel1 = new javax.swing.JPanel();
         zminus = new javax.swing.JButton();
@@ -286,7 +292,6 @@ public class jMDIFrame extends JInternalFrame {
         });
 
         toRCodeBut.setText("R Code —>");
-        toRCodeBut.setActionCommand("R Code —>");
         toRCodeBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 toRCodeButActionPerformed(evt);
@@ -345,7 +350,6 @@ public class jMDIFrame extends JInternalFrame {
         });
 
         rCodeActivatorBut.setText("Save");
-        rCodeActivatorBut.setActionCommand("Save");
         rCodeActivatorBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 rCodeActivatorButActionPerformed(evt);
@@ -378,6 +382,18 @@ public class jMDIFrame extends JInternalFrame {
                 .addGap(0, 0, Short.MAX_VALUE))
         );
 
+        CodeGenerationMethod.add(SequentialRadioButton);
+        SequentialRadioButton.setSelected(true);
+        SequentialRadioButton.setText("Sequential ");
+        SequentialRadioButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                SequentialRadioButtonActionPerformed(evt);
+            }
+        });
+
+        CodeGenerationMethod.add(MicroserviceRadioButton);
+        MicroserviceRadioButton.setText("Microservice");
+
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
@@ -391,7 +407,13 @@ public class jMDIFrame extends JInternalFrame {
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(toRCodeBut, javax.swing.GroupLayout.DEFAULT_SIZE, 105, Short.MAX_VALUE)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(toRCodeBut, javax.swing.GroupLayout.DEFAULT_SIZE, 109, Short.MAX_VALUE)
+                            .addGroup(jPanel3Layout.createSequentialGroup()
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(SequentialRadioButton, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(MicroserviceRadioButton, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(0, 0, Short.MAX_VALUE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
@@ -400,14 +422,21 @@ public class jMDIFrame extends JInternalFrame {
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGap(36, 36, 36)
-                        .addComponent(toRCodeBut))
-                    .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel3Layout.createSequentialGroup()
+                                .addGap(36, 36, 36)
+                                .addComponent(toRCodeBut)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(SequentialRadioButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(MicroserviceRadioButton)))
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(closeDescrBut)
-                .addContainerGap(10, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         toRCodeBut.getAccessibleContext().setAccessibleName("R code —>");
@@ -2111,14 +2140,41 @@ public class jMDIFrame extends JInternalFrame {
         copyToClipboard(textDescription.getText());
     }//GEN-LAST:event_copyDescrButActionPerformed
 
-    private void toRCodeButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_toRCodeButActionPerformed
-        //?????????????????? R ????????
-        String rCode = descriptionService.generateRCode(all, textDescription.getText());
-        textDescriptionRCode.setText(rCode); //?-?????????<???????? R ??????
+    private void toRCodeButActionPerformed(java.awt.event.ActionEvent evt) {                                           
+        if (MicroserviceRadioButton.isSelected()) {
+            try {
+                String sequentialReferenceCode = descriptionService.generateRCode(all, textDescription.getText());
+                MicroserviceRBundleGenerator bundleGenerator = new MicroserviceRBundleGenerator();
+                MicroserviceGenerationResult result = bundleGenerator.generateBundle(
+                        sequentialReferenceCode,
+                        new File(".").getCanonicalFile().toPath().resolve("GeneratedMicroservices")
+                );
 
-        rCodeActivatorBut.setEnabled(true); //?????'?????????????? ???????????? ?????:??????????????
+                StringBuilder output = new StringBuilder();
+                output.append("Microservice files generated in:\n")
+                      .append(result.getOutputDirectory().toString())
+                      .append("\n\nGenerated files:\n");
+                List<String> fileNames = result.getGeneratedFileNames();
+                for (String fileName : fileNames) {
+                    output.append("- ").append(fileName).append("\n");
+                }
+                textDescriptionRCode.setText(output.toString());
+
+                // Files are already generated on disk in microservice mode.
+                rCodeActivatorBut.setEnabled(false);
+                copyDescrButRCode.setEnabled(true);
+            } catch (IOException ex) {
+                Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
+                JOptionPane.showMessageDialog(this, "Error generating microservice files: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+            return;
+        }
+
+        String rCode = descriptionService.generateRCode(all, textDescription.getText());
+        textDescriptionRCode.setText(rCode);
+        rCodeActivatorBut.setEnabled(true);
         copyDescrButRCode.setEnabled(true);
-    }//GEN-LAST:event_toRCodeButActionPerformed//GEN-LAST:event_toRCodeButActionPerformed
+    }                                                                                    
 
     private void copyDescrButRCodeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyDescrButRCodeActionPerformed
         copyToClipboard(textDescriptionRCode.getText());
@@ -2131,6 +2187,10 @@ public class jMDIFrame extends JInternalFrame {
     private void closeDescrButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeDescrButActionPerformed
         descrShowDialog.dispose();
     }//GEN-LAST:event_closeDescrButActionPerformed
+
+    private void SequentialRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SequentialRadioButtonActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_SequentialRadioButtonActionPerformed
 
     
 
@@ -2430,7 +2490,10 @@ public class jMDIFrame extends JInternalFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.ButtonGroup CodeGenerationMethod;
+    private javax.swing.JRadioButton MicroserviceRadioButton;
     private javax.swing.JFileChooser SaveChooser;
+    private javax.swing.JRadioButton SequentialRadioButton;
     private java.awt.Canvas canvas1;
     private javax.swing.JButton closeDescrBut;
     private javax.swing.JButton copyDescrBut;

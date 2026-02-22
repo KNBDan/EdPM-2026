@@ -86,6 +86,22 @@ public class generatorObj {
            beforeName = objIF.getLinkedOutFalseV();
            figVtoR = beforeName;
         }
+        ArrayList<String> chain = findRChainBetween(figVtoR, objIF.getLinkedInR());
+        if (!chain.isEmpty()) {
+            for (String rName : chain) {
+                subObjR r = findRObjByName(rName);
+                if (r != null) {
+                    subString += "    ".repeat(curSpace) + rStringGenerator(r) + "\n";
+                }
+            }
+            curSpace -= 1;
+            subString+="    ".repeat(curSpace)+"else "+ objIF.getLinkedOutTrueR()+" = "+objIF.getLinkedInR()+" (i)";
+            if (!withNvType){
+               subString += "/" +objIF.getLinkedInR() +" (i-1);";
+            }
+            globalResult+=subString+ "\n";
+            return globalResult;
+        }
         ArrayList<String> beforest =findStartOfLine(figVtoR,iskluchenia); // всё что входит в фигуру V
         exFiguresString = "";
         createExFigureCode(beforest);
@@ -211,6 +227,52 @@ public class generatorObj {
         }
         return allEndLinks;
     }
+
+    private ArrayList<String> findRChainBetween(String startV, String targetR){
+        ArrayList<String> result = new ArrayList<String>();
+        if (startV == null || targetR == null) {
+            return result;
+        }
+        String currentV = startV;
+        ArrayList<String> visited = new ArrayList<String>();
+        while (currentV != null && !currentV.isEmpty()) {
+            if (visited.contains(currentV)) {
+                break;
+            }
+            visited.add(currentV);
+            String nextR = null;
+            for (Line_s line: curLines){
+                if (line.GetID1().equals(currentV)) {
+                    Figure_s endFig = findFigByName(line.GetID2());
+                    if (endFig != null && endFig.getShape().equals("R")) {
+                        nextR = endFig.getName();
+                        break;
+                    }
+                }
+            }
+            if (nextR == null) {
+                break;
+            }
+            result.add(nextR);
+            if (nextR.equals(targetR)) {
+                return result;
+            }
+            String nextV = null;
+            for (Line_s line: curLines){
+                if (line.GetID1().equals(nextR)) {
+                    Figure_s endFig = findFigByName(line.GetID2());
+                    if (endFig != null && endFig.getShape().equals("V")) {
+                        nextV = endFig.getName();
+                        break;
+                    }
+                }
+            }
+            currentV = nextV;
+        }
+        result.clear();
+        return result;
+    }
+
     
     //Сосздание суммы любой фигуры, типа R + R1 ,  O + O1 для удобства
     private String generateStringFromSubArray(ArrayList<String> array){

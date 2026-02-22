@@ -265,7 +265,7 @@ public class RTranslatorClass {
         String rLeft = afterElse.split("=")[0];
         String rRight = afterElse.split("=")[1];
         String newID = Integer.toString(idNumber-idStep);//preCycleId + ((1 + numSpace) * idStep)//чтото на умном, код не нужен, после проверки ДЕМОНТИРОВАТЬ!!
-        rCodeString = "\n" + space() +rLeft + "<-subset(" + rRight + ", select=c(R, ID_Out)"+
+        rCodeString = "\n" + space() +rLeft + "<-subset(" + rRight + ", select=c(R, ID_Out))"+
         "\n"+ space() + "colnames("+rLeft+") <- c('S', 'ID')"+
         "\n"+ space() + rLeft + "<- Select("+ rLeft +", "+startId+", "+newID+")";  //(вычитаем шаг чтобы было корректное значнеие)    
         rCodeString = space() + "}" + rCodeString;
