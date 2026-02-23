@@ -2166,14 +2166,22 @@ public class jMDIFrame extends JInternalFrame {
             } catch (IOException ex) {
                 Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
                 JOptionPane.showMessageDialog(this, "Error generating microservice files: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (RuntimeException ex) {
+                Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
+                JOptionPane.showMessageDialog(this, "R generation error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
             return;
         }
 
-        String rCode = descriptionService.generateRCode(all, textDescription.getText());
-        textDescriptionRCode.setText(rCode);
-        rCodeActivatorBut.setEnabled(true);
-        copyDescrButRCode.setEnabled(true);
+        try {
+            String rCode = descriptionService.generateRCode(all, textDescription.getText());
+            textDescriptionRCode.setText(rCode);
+            rCodeActivatorBut.setEnabled(true);
+            copyDescrButRCode.setEnabled(true);
+        } catch (RuntimeException ex) {
+            Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(this, "R generation error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }                                                                                    
 
     private void copyDescrButRCodeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyDescrButRCodeActionPerformed

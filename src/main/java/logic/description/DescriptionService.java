@@ -23,7 +23,7 @@ public class DescriptionService {
             return "";
         }
         newPrecodeGenerator preCode = new newPrecodeGenerator(new java.util.ArrayList<>(all));
-        RTranslatorClass newRTC = new RTranslatorClass(preCode.getPrecodeString());
+        RTranslatorClass newRTC = new RTranslatorClass(preCode.getPrecodeString(), all);
         newRTC.addString(descriptionText == null ? "" : descriptionText);
         return newRTC.getStringRCode();
     }

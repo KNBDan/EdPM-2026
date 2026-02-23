@@ -5,27 +5,29 @@ import static EPM.mdi.prefsMdi;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.LinkedHashSet;
 import java.util.prefs.Preferences;
 import logic.description.rtranslator.CreateRCode;
+import objects.figure.figures;
 
 public class RTranslatorClass {
 
-    ArrayList<String> rows = new ArrayList<>(); //готовые строки
+    ArrayList<String> rows = new ArrayList<>(); //РіРѕС‚РѕРІС‹Рµ СЃС‚СЂРѕРєРё
     String xesFileName = "";
     String startN = "";
-    int unicNvNumber = 1; //уникальный id для технических nv
-    boolean isPlotActive = false; //строить графики
-    boolean isXESActive = false; //Выгрузка в ХЕС
-    boolean isActiveO = false; //Учитывать О
+    int unicNvNumber = 1; //СѓРЅРёРєР°Р»СЊРЅС‹Р№ id РґР»СЏ С‚РµС…РЅРёС‡РµСЃРєРёС… nv
+    boolean isPlotActive = false; //СЃС‚СЂРѕРёС‚СЊ РіСЂР°С„РёРєРё
+    boolean isXESActive = false; //Р’С‹РіСЂСѓР·РєР° РІ РҐР•РЎ
+    boolean isActiveO = false; //РЈС‡РёС‚С‹РІР°С‚СЊ Рћ
     int idNumber = 66;
-    int preCycleId = 0; //ЕСЛИ НЕ ПОТРЕБ УДАЛИТЬ!
+    int preCycleId = 0; //Р•РЎР›Р РќР• РџРћРўР Р•Р‘ РЈР”РђР›РРўР¬!
     int startId = 66;
     int idStep = 66;
     int rCount = 0;
-    int numSpace = 0; //Отступы для if  и счетчик if соотв
+    int numSpace = 0; //РћС‚СЃС‚СѓРїС‹ РґР»СЏ if  Рё СЃС‡РµС‚С‡РёРє if СЃРѕРѕС‚РІ
     boolean ifDetector = false;
     private static Preferences localPrefsMdis = prefsMdi; 
     private String preCode;
@@ -36,9 +38,27 @@ public class RTranslatorClass {
     private final Map<String, String> deferredRLines = new HashMap<>();
     private final Map<String, Set<String>> deferredRDeps = new HashMap<>();
     private final ArrayList<String> deferredROrder = new ArrayList<>();
+    private final Map<String, Integer> vComplexityIdByName = new HashMap<>();
+    private final Map<String, String> vCustomCodeByName = new HashMap<>();
+    private final Map<String, String> vLlmPromptByName = new HashMap<>();
+    private final Set<String> helperFunctionNames = new HashSet<>();
+    private final ArrayList<String> helperFunctionDefs = new ArrayList<>();
+
+    private static final int V_ID_LINEAR = 1;
+    private static final int V_ID_QUADRATIC = 2;
+    private static final int V_ID_NLOGN = 3;
+    private static final int V_ID_EXPONENTIAL = 4;
+    private static final int V_ID_CONSTANT = 5;
+    private static final int V_ID_CUSTOM_FUNC = 10;
+    private static final int V_ID_LLM_FUNC = 11;
     
     public RTranslatorClass(String preCode) {
+        this(preCode, null);
+    }
+
+    public RTranslatorClass(String preCode, List<figures> allFigures) {
         this.preCode = preCode;
+        initVMetadata(allFigures);
         boolean help = true; String hep = "f";
         startN = localPrefsMdis.get("NValue", hep);
         isPlotActive = (localPrefsMdis.getBoolean("graphState",help));
@@ -47,48 +67,54 @@ public class RTranslatorClass {
         idStep = Integer.valueOf(localPrefsMdis.get( "stepId",hep));
         isActiveO = (localPrefsMdis.getBoolean("oActiveState",help));
         this.xesFileName = localPrefsMdis.get("xesName", hep);
-        preCycleId = idNumber; //первое значение предциклового id //ЕСЛИ НЕ ПОТРЕБ УДАЛИТЬ!
-        startId = idNumber; //стартовый id
-        if (!isPlotActive){ //если не строим графики, то не выгружаем хес
+        preCycleId = idNumber; //РїРµСЂРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РїСЂРµРґС†РёРєР»РѕРІРѕРіРѕ id //Р•РЎР›Р РќР• РџРћРўР Р•Р‘ РЈР”РђР›РРўР¬!
+        startId = idNumber; //СЃС‚Р°СЂС‚РѕРІС‹Р№ id
+        if (!isPlotActive){ //РµСЃР»Рё РЅРµ СЃС‚СЂРѕРёРј РіСЂР°С„РёРєРё, С‚Рѕ РЅРµ РІС‹РіСЂСѓР¶Р°РµРј С…РµСЃ
             isXESActive = false;
         }
     }
     public String getStringRCode(){
         String vFuncsBlock = "";
-        if (!vFunctionDefs.isEmpty()) {
-            vFuncsBlock = "# --- ==== [ Микросервисы ] ==== ---\n"
-                + String.join("\n\n", vFunctionDefs) + "\n";
+        if (!helperFunctionDefs.isEmpty() || !vFunctionDefs.isEmpty()) {
+            StringBuilder block = new StringBuilder();
+            if (!helperFunctionDefs.isEmpty()) {
+                block.append(String.join("\n\n", helperFunctionDefs)).append("\n\n");
+            }
+            if (!vFunctionDefs.isEmpty()) {
+                block.append(String.join("\n\n", vFunctionDefs)).append("\n");
+            }
+            vFuncsBlock = "# --- ==== [ РњРёРєСЂРѕСЃРµСЂРІРёСЃС‹ ] ==== ---\n" + block;
         }
-        return CreateRCode.generateCodeRFromString(preCode + "\n" + vFuncsBlock,rows); //Сохраняем в файл
+        return CreateRCode.generateCodeRFromString(preCode + "\n" + vFuncsBlock,rows); //РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
     }
     public void addString(String text) {
         prePassCache(text);
         rows.add("N <- "+startN);
-        for (String strg : text.split("\n")) { //перепор каждой строки
+        for (String strg : text.split("\n")) { //РїРµСЂРµРїРѕСЂ РєР°Р¶РґРѕР№ СЃС‚СЂРѕРєРё
             if (strg.length() == 0){
                 continue;
             }
             strg = strg.replace("    ", "");
-            char shape = strg.charAt(0); //выбираем первый символ строки для определения типа фигуры
+            char shape = strg.charAt(0); //РІС‹Р±РёСЂР°РµРј РїРµСЂРІС‹Р№ СЃРёРјРІРѕР» СЃС‚СЂРѕРєРё РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ С‚РёРїР° С„РёРіСѓСЂС‹
             String forAdding = "";
-            switch (shape) { //переделываем псевдокод в код R
-                case ('i'): //первая i = 100 например
+            switch (shape) { //РїРµСЂРµРґРµР»С‹РІР°РµРј РїСЃРµРІРґРѕРєРѕРґ РІ РєРѕРґ R
+                case ('i'): //РїРµСЂРІР°СЏ i = 100 РЅР°РїСЂРёРјРµСЂ
                     forAdding = space() + strg.replace("=","<-");
                     break;
-                case ('F'): //первая FP = 100 например
+                case ('F'): //РїРµСЂРІР°СЏ FP = 100 РЅР°РїСЂРёРјРµСЂ
                     forAdding = space() + strg.replace("=","<-");
                     break;    
                 case ('N'): //NV
                     cacheNvSource(strg);
                     continue;
                 case ('d'): //if
-                    ifDetector = true; //нашли IF в коде
+                    ifDetector = true; //РЅР°С€Р»Рё IF РІ РєРѕРґРµ
                     forAdding = generateIfStartCodeR(strg);
                     break;
                 case ('e'): // end if
                     numSpace-=1;
                     forAdding = generateIfEndCodeR(strg);
-                    if (numSpace==0){ //новый предцикловый id для новых циклов от нулевого отступа
+                    if (numSpace==0){ //РЅРѕРІС‹Р№ РїСЂРµРґС†РёРєР»РѕРІС‹Р№ id РґР»СЏ РЅРѕРІС‹С… С†РёРєР»РѕРІ РѕС‚ РЅСѓР»РµРІРѕРіРѕ РѕС‚СЃС‚СѓРїР°
                         preCycleId = idNumber-idStep;
                     }
                     break;
@@ -108,18 +134,18 @@ public class RTranslatorClass {
             if (forAdding.isEmpty()) {
                 continue;
             }
-            rows.add(forAdding); //Добавляем полученную строку/строкИ в массив с готовыми строками (если нужно хранить именно строку стоит 
-            //перед добавлением полученную строку разделить по \n
+            rows.add(forAdding); //Р”РѕР±Р°РІР»СЏРµРј РїРѕР»СѓС‡РµРЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ/СЃС‚СЂРѕРєР РІ РјР°СЃСЃРёРІ СЃ РіРѕС‚РѕРІС‹РјРё СЃС‚СЂРѕРєР°РјРё (РµСЃР»Рё РЅСѓР¶РЅРѕ С…СЂР°РЅРёС‚СЊ РёРјРµРЅРЅРѕ СЃС‚СЂРѕРєСѓ СЃС‚РѕРёС‚ 
+            //РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј РїРѕР»СѓС‡РµРЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ СЂР°Р·РґРµР»РёС‚СЊ РїРѕ \n
         }
         appendDeferredRLines();
         for (String strg : rows) {
             System.out.println(strg);
         }
         if (isXESActive && rCount>0){
-            rows.add(generateWriteCode()); //Если выгружаем хес добавляем соотв строку
+            rows.add(generateWriteCode()); //Р•СЃР»Рё РІС‹РіСЂСѓР¶Р°РµРј С…РµСЃ РґРѕР±Р°РІР»СЏРµРј СЃРѕРѕС‚РІ СЃС‚СЂРѕРєСѓ
         }
-//        return CreateRCode.generateCodeRFromString(preCode,rows); //Сохраняем в файл
-//        (rFilePath+"/"+rFileName+".R") Указание сохранения файла R
+//        return CreateRCode.generateCodeRFromString(preCode,rows); //РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
+//        (rFilePath+"/"+rFileName+".R") РЈРєР°Р·Р°РЅРёРµ СЃРѕС…СЂР°РЅРµРЅРёСЏ С„Р°Р№Р»Р° R
     }
     private void prePassCache(String text) {
         for (String strg : text.split("\n")) {
@@ -227,7 +253,7 @@ public class RTranslatorClass {
 
     public String generateWriteCode(){
         String rCodeString = "";
-        String spr_num = Integer.toString(idNumber-idStep); //Значение S_prob  (вычитаем шаг чтобы было корректное значнеие) (всегда последнее id в S)
+        String spr_num = Integer.toString(idNumber-idStep); //Р—РЅР°С‡РµРЅРёРµ S_prob  (РІС‹С‡РёС‚Р°РµРј С€Р°Рі С‡С‚РѕР±С‹ Р±С‹Р»Рѕ РєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РЅРµРёРµ) (РІСЃРµРіРґР° РїРѕСЃР»РµРґРЅРµРµ id РІ S)
         if (rCount >1){
             StringBuilder xList = new StringBuilder();
             for (int i = 1; i <= rCount;i++){
@@ -241,7 +267,7 @@ public class RTranslatorClass {
             rCodeString += "if (length(X_list) > 0) do.call(vioplot, c(X_list, list(col = \"lightgray\", panel.first=grid())))\n";
         }
         rCodeString += "l<-unique(X$ID)";
-        if (ifDetector){ //цикл был вставляем в код
+        if (ifDetector){ //С†РёРєР» Р±С‹Р» РІСЃС‚Р°РІР»СЏРµРј РІ РєРѕРґ
             rCodeString +="\nl<-l[l<"+spr_num+"]";
         }
         rCodeString +="\ns_last<-NA" +
@@ -252,31 +278,31 @@ public class RTranslatorClass {
         rCodeString += "\nwrite.csv(X, file=\""+xesFileName+".csv\")";
         return rCodeString;
     }
-    public String generateIfStartCodeR(String exCode) { //Констиурктор кода языка R для if start
+    public String generateIfStartCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ if start
         String rCodeString  = "";
         String condition = exCode.split("\\(")[1].split("\\)")[0];
         rCodeString = space() + "while (" + condition + "){";
         numSpace+=1;
         return rCodeString;
     }
-     public String generateIfEndCodeR(String exCode) { //Констиурктор кода языка R для if end
+     public String generateIfEndCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ if end
         String rCodeString = "";
         String afterElse = exCode.split("else ")[1].split("\\(")[0].replace(" ", "");
         String rLeft = afterElse.split("=")[0];
         String rRight = afterElse.split("=")[1];
-        String newID = Integer.toString(idNumber-idStep);//preCycleId + ((1 + numSpace) * idStep)//чтото на умном, код не нужен, после проверки ДЕМОНТИРОВАТЬ!!
+        String newID = Integer.toString(idNumber-idStep);//preCycleId + ((1 + numSpace) * idStep)//С‡С‚РѕС‚Рѕ РЅР° СѓРјРЅРѕРј, РєРѕРґ РЅРµ РЅСѓР¶РµРЅ, РїРѕСЃР»Рµ РїСЂРѕРІРµСЂРєРё Р”Р•РњРћРќРўРР РћР’РђРўР¬!!
         rCodeString = "\n" + space() +rLeft + "<-subset(" + rRight + ", select=c(R, ID_Out))"+
         "\n"+ space() + "colnames("+rLeft+") <- c('S', 'ID')"+
-        "\n"+ space() + rLeft + "<- Select("+ rLeft +", "+startId+", "+newID+")";  //(вычитаем шаг чтобы было корректное значнеие)    
+        "\n"+ space() + rLeft + "<- Select("+ rLeft +", "+startId+", "+newID+")";  //(РІС‹С‡РёС‚Р°РµРј С€Р°Рі С‡С‚РѕР±С‹ Р±С‹Р»Рѕ РєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РЅРµРёРµ)    
         rCodeString = space() + "}" + rCodeString;
         return rCodeString;
     }
-    public String generateSCodeR(String exCode) { //Констиурктор кода языка R для фиугры S
+    public String generateSCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ С„РёСѓРіСЂС‹ S
         String rCodeString = "";
-        String name = exCode.split(" = ")[0];//до =
-        String type = exCode.split(" = ")[1].split("\\(")[0]; // после = до (
-        String typeVar = exCode.split(" = ")[1].split("\\(")[1].replace(")", "");// в ()
-        typeVar = typeVar.replace(',','.'); //Замена запятой на точку, так как конфликт в R. ИСПРАВИТЬ В ОСНОВНОЙ ПРОГЕ ИЛИ УЧЕСТЬ ВЕЗДЕ
+        String name = exCode.split(" = ")[0];//РґРѕ =
+        String type = exCode.split(" = ")[1].split("\\(")[0]; // РїРѕСЃР»Рµ = РґРѕ (
+        String typeVar = exCode.split(" = ")[1].split("\\(")[1].replace(")", "");// РІ ()
+        typeVar = typeVar.replace(',','.'); //Р—Р°РјРµРЅР° Р·Р°РїСЏС‚РѕР№ РЅР° С‚РѕС‡РєСѓ, С‚Р°Рє РєР°Рє РєРѕРЅС„Р»РёРєС‚ РІ R. РРЎРџР РђР’РРўР¬ Р’ РћРЎРќРћР’РќРћР™ РџР РћР“Р• РР›Р РЈР§Р•РЎРўР¬ Р’Р•Р—Р”Р•
         if (type.equals("prob")){ //prob S<-S_prob(N, 0.9, 1000)
             rCodeString = space() + name + "<-S_" + type + "(N, " + typeVar + ", " + idNumber + ")";
         }
@@ -285,17 +311,17 @@ public class RTranslatorClass {
         }
         idNumber += idStep;
         
-        if (isPlotActive) { //если нужно строить графики
+        if (isPlotActive) { //РµСЃР»Рё РЅСѓР¶РЅРѕ СЃС‚СЂРѕРёС‚СЊ РіСЂР°С„РёРєРё
             rCodeString += "\n"
-                    + space() + "plot(1:N, " + name + "$S, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,6), main = \"Элемент "+name+"\")";
+                    + space() + "plot(1:N, " + name + "$S, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,6), main = \"Р­Р»РµРјРµРЅС‚ "+name+"\")";
         }
         return rCodeString;
     }
 
-    public String generateNVCodeR(String exCode) { //Констиурктор кода языка R для фиугры NV
+    public String generateNVCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ С„РёСѓРіСЂС‹ NV
         String rCodeString = "";
-        String nvName = exCode.split(" = ")[0]; //имя NV
-        String rName = exCode.split(" = ")[1]; //имя R
+        String nvName = exCode.split(" = ")[0]; //РёРјСЏ NV
+        String rName = exCode.split(" = ")[1]; //РёРјСЏ R
         rCodeString = space() + nvName + "<-subset( " + rName + ", select=c(R, ID_Out))"+
                 "\n"+space()+"colnames( " + nvName + " ) <- c('S', 'ID')";
         return rCodeString;
@@ -331,7 +357,8 @@ public class RTranslatorClass {
 
         String vFuncName = vName + "_func";
         ArrayList<String> externalRInputs = getExternalRInputs(nvFig, rInputName);
-        ensureVFunctionDefined(vFuncName, vName, type, srResult, oNum, rInputName, srFig, nvFig, externalRInputs);
+        int complexityId = resolveComplexityId(vName, type);
+        ensureVFunctionDefined(vFuncName, vName, complexityId, srResult, oNum, rInputName, srFig, nvFig, externalRInputs);
 
         String callArgs = buildVFuncCallArgs(rInputName, externalRInputs);
         rCodeString = space() + rName + "<- " + vFuncName + "(" + callArgs + ")";
@@ -413,14 +440,13 @@ public class RTranslatorClass {
 
     private String generateNVFromRVar(String nvName, String rVar){
         return nvName + "<-subset( " + rVar + ", select=c(R, ID_Out))\n"
-            + "colnames( " + nvName + " ) <- c('S', 'ID')\n"
-            + nvName + "$ID <- lapply(" + nvName + "$ID, function(x) { if (is.list(x)) x else list(x) })";
+            + "colnames( " + nvName + " ) <- c('S', 'ID')";
     }
 
     private void ensureVFunctionDefined(
         String vFuncName,
         String vName,
-        String type,
+        int complexityId,
         SrBlockResult srResult,
         String oNum,
         String rInputName,
@@ -446,13 +472,127 @@ public class RTranslatorClass {
                 }
             }
         }
+        String customOExpr = buildCustomOExpr(vName, complexityId, srResult.srElement, oNum);
+        int runtimeM = normalizeRuntimeM(complexityId);
         func.append("  return(V(")
-            .append(type).append(", ")
+            .append(runtimeM).append(", ")
             .append(srResult.srElement).append(", \"")
             .append(vName).append("\", ")
-            .append(oNum).append("))\n");
+            .append(customOExpr).append("))\n");
         func.append("}");
         vFunctionDefs.add(func.toString());
+    }
+
+    private int resolveComplexityId(String vName, String legacyType) {
+        if (vComplexityIdByName.containsKey(vName)) {
+            int id = vComplexityIdByName.get(vName);
+            validateComplexity(vName, id);
+            return id;
+        }
+        try {
+            int id = Integer.parseInt(legacyType.trim());
+            validateComplexity(vName, id);
+            return id;
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Unsupported complexity for " + vName + ": " + legacyType);
+        }
+    }
+
+    private void validateComplexity(String vName, int id) {
+        if (id >= V_ID_LINEAR && id <= V_ID_EXPONENTIAL) {
+            return;
+        }
+        if (id == V_ID_CONSTANT) {
+            throw new IllegalArgumentException("Complexity O(1) is not implemented in base R for " + vName);
+        }
+        if (id == V_ID_CUSTOM_FUNC) {
+            String code = vCustomCodeByName.get(vName);
+            if (code == null || code.trim().isEmpty()) {
+                throw new IllegalArgumentException("Custom complexity selected but code is empty for " + vName);
+            }
+            return;
+        }
+        if (id == V_ID_LLM_FUNC) {
+            String prompt = vLlmPromptByName.get(vName);
+            if (prompt == null || prompt.trim().isEmpty()) {
+                throw new IllegalArgumentException("LLM complexity selected but prompt is empty for " + vName);
+            }
+            return;
+        }
+        throw new IllegalArgumentException("Complexity id " + id + " is not supported for " + vName);
+    }
+
+    private int normalizeRuntimeM(int complexityId) {
+        if (complexityId >= V_ID_LINEAR && complexityId <= V_ID_EXPONENTIAL) {
+            return complexityId;
+        }
+        return V_ID_LINEAR;
+    }
+
+    private String buildCustomOExpr(String vName, int complexityId, String srElement, String defaultOExpr) {
+        if (complexityId == V_ID_CUSTOM_FUNC) {
+            String userCode = vCustomCodeByName.getOrDefault(vName, "");
+            String userFn = extractFunctionName(userCode);
+            if (userFn == null || userFn.isEmpty()) {
+                throw new IllegalArgumentException("Unable to detect custom function name for " + vName);
+            }
+            String helperName = vName + "_custom_complexity";
+            ensureCustomHelper(helperName, userFn);
+            return helperName + "(N, " + srElement + ", " + defaultOExpr + ")";
+        }
+        if (complexityId == V_ID_LLM_FUNC) {
+            String prompt = vLlmPromptByName.getOrDefault(vName, "").replace("\"", "\\\"");
+            String helperName = vName + "_llm_complexity";
+            ensureLlmHelper(helperName, prompt);
+            return helperName + "(N, " + srElement + ", " + defaultOExpr + ")";
+        }
+        return defaultOExpr;
+    }
+
+    private void ensureCustomHelper(String helperName, String userFn) {
+        if (helperFunctionNames.contains(helperName)) {
+            return;
+        }
+        helperFunctionNames.add(helperName);
+        StringBuilder sb = new StringBuilder();
+        sb.append(helperName).append(" <- function(N, S_in, O_default){\n")
+          .append("  val <- tryCatch(").append(userFn).append("(N, S_in, O_default), error = function(e) NA)\n")
+          .append("  if (is.na(val[1])) val <- tryCatch(").append(userFn).append("(N, S_in), error = function(e) NA)\n")
+          .append("  if (is.na(val[1])) val <- tryCatch(").append(userFn).append("(N), error = function(e) NA)\n")
+          .append("  if (!is.numeric(val) || length(val) == 0 || is.na(val[1])) stop('Custom complexity must return numeric scalar')\n")
+          .append("  as.numeric(val[1])\n")
+          .append("}");
+        helperFunctionDefs.add(sb.toString());
+    }
+
+    private void ensureLlmHelper(String helperName, String prompt) {
+        if (helperFunctionNames.contains(helperName)) {
+            return;
+        }
+        helperFunctionNames.add(helperName);
+        StringBuilder sb = new StringBuilder();
+        sb.append(helperName).append(" <- function(N, S_in, O_default){\n")
+          .append("  prompt <- \"").append(prompt).append("\"\n")
+          .append("  # Wrapper placeholder: integrate real LLM call later.\n")
+          .append("  # Must return numeric scalar complexity coefficient.\n")
+          .append("  if (is.null(prompt) || nchar(prompt) == 0) stop('LLM prompt is empty')\n")
+          .append("  as.numeric(O_default)\n")
+          .append("}");
+        helperFunctionDefs.add(sb.toString());
+    }
+
+    private String extractFunctionName(String code) {
+        if (code == null) {
+            return null;
+        }
+        String[] lines = code.split("\\R");
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.contains("<-") && trimmed.contains("function(")) {
+                return trimmed.split("<-", 2)[0].trim();
+            }
+        }
+        return null;
     }
 
     private void deferTopLevelR(String rName, String rLine, String rInputName, ArrayList<String> externalRInputs) {
@@ -662,6 +802,58 @@ public class RTranslatorClass {
             }
         }
         return args.toString();
+    }
+
+    private void initVMetadata(List<figures> allFigures) {
+        if (allFigures == null) {
+            return;
+        }
+        for (figures fig : allFigures) {
+            if (fig == null || fig.getNameF() == null || !fig.getNameF().startsWith("V")) {
+                continue;
+            }
+            String vName = fig.getNameF();
+            int id = mapComplexityIdFromSelection(fig.getVSelected());
+            vComplexityIdByName.put(vName, id);
+            if (id == V_ID_CUSTOM_FUNC) {
+                vCustomCodeByName.put(vName, fig.getCodeF());
+            }
+            if (id == V_ID_LLM_FUNC) {
+                vLlmPromptByName.put(vName, fig.getLlmPrompt());
+            }
+        }
+    }
+
+    private int mapComplexityIdFromSelection(String selected) {
+        if (selected == null) {
+            return V_ID_LINEAR;
+        }
+        String norm = selected.trim().toLowerCase();
+        if (norm.contains("custom")) {
+            return V_ID_CUSTOM_FUNC;
+        }
+        if (norm.contains("llm")) {
+            return V_ID_LLM_FUNC;
+        }
+        if (norm.contains("exp")) {
+            return V_ID_EXPONENTIAL;
+        }
+        if (norm.contains("n * log") || norm.contains("n*log")) {
+            return V_ID_NLOGN;
+        }
+        if (norm.contains("log")) {
+            return V_ID_NLOGN;
+        }
+        if (norm.contains("o ( 1 )") || norm.contains("o(1)")) {
+            return V_ID_CONSTANT;
+        }
+        if (norm.contains("n^2")) {
+            return V_ID_QUADRATIC;
+        }
+        if (norm.contains("o ( n )") || norm.contains("o(n)")) {
+            return V_ID_LINEAR;
+        }
+        return V_ID_LINEAR;
     }
 
     private String space(){
