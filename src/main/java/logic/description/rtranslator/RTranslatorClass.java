@@ -9,25 +9,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.regex.Pattern;
 import java.util.prefs.Preferences;
 import logic.description.rtranslator.CreateRCode;
 import objects.figure.figures;
 
 public class RTranslatorClass {
 
-    ArrayList<String> rows = new ArrayList<>(); //РіРѕС‚РѕРІС‹Рµ СЃС‚СЂРѕРєРё
+    ArrayList<String> rows = new ArrayList<>(); //Р С–Р С•РЎвЂљР С•Р Р†РЎвЂ№Р Вµ РЎРѓРЎвЂљРЎР‚Р С•Р С”Р С‘
     String xesFileName = "";
     String startN = "";
-    int unicNvNumber = 1; //СѓРЅРёРєР°Р»СЊРЅС‹Р№ id РґР»СЏ С‚РµС…РЅРёС‡РµСЃРєРёС… nv
-    boolean isPlotActive = false; //СЃС‚СЂРѕРёС‚СЊ РіСЂР°С„РёРєРё
-    boolean isXESActive = false; //Р’С‹РіСЂСѓР·РєР° РІ РҐР•РЎ
-    boolean isActiveO = false; //РЈС‡РёС‚С‹РІР°С‚СЊ Рћ
+    int unicNvNumber = 1; //РЎС“Р Р…Р С‘Р С”Р В°Р В»РЎРЉР Р…РЎвЂ№Р в„– id Р Т‘Р В»РЎРЏ РЎвЂљР ВµРЎвЂ¦Р Р…Р С‘РЎвЂЎР ВµРЎРѓР С”Р С‘РЎвЂ¦ nv
+    boolean isPlotActive = false; //РЎРѓРЎвЂљРЎР‚Р С•Р С‘РЎвЂљРЎРЉ Р С–РЎР‚Р В°РЎвЂћР С‘Р С”Р С‘
+    boolean isXESActive = false; //Р вЂ™РЎвЂ№Р С–РЎР‚РЎС“Р В·Р С”Р В° Р Р† Р ТђР вЂўР РЋ
+    boolean isActiveO = false; //Р Р€РЎвЂЎР С‘РЎвЂљРЎвЂ№Р Р†Р В°РЎвЂљРЎРЉ Р С›
     int idNumber = 66;
-    int preCycleId = 0; //Р•РЎР›Р РќР• РџРћРўР Р•Р‘ РЈР”РђР›РРўР¬!
+    int preCycleId = 0; //Р вЂўР РЋР вЂєР В Р СњР вЂў Р СџР С›Р СћР В Р вЂўР вЂ Р Р€Р вЂќР С’Р вЂєР ВР СћР В¬!
     int startId = 66;
     int idStep = 66;
     int rCount = 0;
-    int numSpace = 0; //РћС‚СЃС‚СѓРїС‹ РґР»СЏ if  Рё СЃС‡РµС‚С‡РёРє if СЃРѕРѕС‚РІ
+    int numSpace = 0; //Р С›РЎвЂљРЎРѓРЎвЂљРЎС“Р С—РЎвЂ№ Р Т‘Р В»РЎРЏ if  Р С‘ РЎРѓРЎвЂЎР ВµРЎвЂљРЎвЂЎР С‘Р С” if РЎРѓР С•Р С•РЎвЂљР Р†
     boolean ifDetector = false;
     private static Preferences localPrefsMdis = prefsMdi; 
     private String preCode;
@@ -67,9 +68,9 @@ public class RTranslatorClass {
         idStep = Integer.valueOf(localPrefsMdis.get( "stepId",hep));
         isActiveO = (localPrefsMdis.getBoolean("oActiveState",help));
         this.xesFileName = localPrefsMdis.get("xesName", hep);
-        preCycleId = idNumber; //РїРµСЂРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РїСЂРµРґС†РёРєР»РѕРІРѕРіРѕ id //Р•РЎР›Р РќР• РџРћРўР Р•Р‘ РЈР”РђР›РРўР¬!
-        startId = idNumber; //СЃС‚Р°СЂС‚РѕРІС‹Р№ id
-        if (!isPlotActive){ //РµСЃР»Рё РЅРµ СЃС‚СЂРѕРёРј РіСЂР°С„РёРєРё, С‚Рѕ РЅРµ РІС‹РіСЂСѓР¶Р°РµРј С…РµСЃ
+        preCycleId = idNumber; //Р С—Р ВµРЎР‚Р Р†Р С•Р Вµ Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р С‘Р Вµ Р С—РЎР‚Р ВµР Т‘РЎвЂ Р С‘Р С”Р В»Р С•Р Р†Р С•Р С–Р С• id //Р вЂўР РЋР вЂєР В Р СњР вЂў Р СџР С›Р СћР В Р вЂўР вЂ Р Р€Р вЂќР С’Р вЂєР ВР СћР В¬!
+        startId = idNumber; //РЎРѓРЎвЂљР В°РЎР‚РЎвЂљР С•Р Р†РЎвЂ№Р в„– id
+        if (!isPlotActive){ //Р ВµРЎРѓР В»Р С‘ Р Р…Р Вµ РЎРѓРЎвЂљРЎР‚Р С•Р С‘Р С Р С–РЎР‚Р В°РЎвЂћР С‘Р С”Р С‘, РЎвЂљР С• Р Р…Р Вµ Р Р†РЎвЂ№Р С–РЎР‚РЎС“Р В¶Р В°Р ВµР С РЎвЂ¦Р ВµРЎРѓ
             isXESActive = false;
         }
     }
@@ -83,38 +84,38 @@ public class RTranslatorClass {
             if (!vFunctionDefs.isEmpty()) {
                 block.append(String.join("\n\n", vFunctionDefs)).append("\n");
             }
-            vFuncsBlock = "# --- ==== [ РњРёРєСЂРѕСЃРµСЂРІРёСЃС‹ ] ==== ---\n" + block;
+            vFuncsBlock = "# --- ==== [ Р СљР С‘Р С”РЎР‚Р С•РЎРѓР ВµРЎР‚Р Р†Р С‘РЎРѓРЎвЂ№ ] ==== ---\n" + block;
         }
-        return CreateRCode.generateCodeRFromString(preCode + "\n" + vFuncsBlock,rows); //РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
+        return CreateRCode.generateCodeRFromString(preCode + "\n" + vFuncsBlock,rows); //Р РЋР С•РЎвЂ¦РЎР‚Р В°Р Р…РЎРЏР ВµР С Р Р† РЎвЂћР В°Р в„–Р В»
     }
     public void addString(String text) {
         prePassCache(text);
         rows.add("N <- "+startN);
-        for (String strg : text.split("\n")) { //РїРµСЂРµРїРѕСЂ РєР°Р¶РґРѕР№ СЃС‚СЂРѕРєРё
+        for (String strg : text.split("\n")) { //Р С—Р ВµРЎР‚Р ВµР С—Р С•РЎР‚ Р С”Р В°Р В¶Р Т‘Р С•Р в„– РЎРѓРЎвЂљРЎР‚Р С•Р С”Р С‘
             if (strg.length() == 0){
                 continue;
             }
             strg = strg.replace("    ", "");
-            char shape = strg.charAt(0); //РІС‹Р±РёСЂР°РµРј РїРµСЂРІС‹Р№ СЃРёРјРІРѕР» СЃС‚СЂРѕРєРё РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ С‚РёРїР° С„РёРіСѓСЂС‹
+            char shape = strg.charAt(0); //Р Р†РЎвЂ№Р В±Р С‘РЎР‚Р В°Р ВµР С Р С—Р ВµРЎР‚Р Р†РЎвЂ№Р в„– РЎРѓР С‘Р СР Р†Р С•Р В» РЎРѓРЎвЂљРЎР‚Р С•Р С”Р С‘ Р Т‘Р В»РЎРЏ Р С•Р С—РЎР‚Р ВµР Т‘Р ВµР В»Р ВµР Р…Р С‘РЎРЏ РЎвЂљР С‘Р С—Р В° РЎвЂћР С‘Р С–РЎС“РЎР‚РЎвЂ№
             String forAdding = "";
-            switch (shape) { //РїРµСЂРµРґРµР»С‹РІР°РµРј РїСЃРµРІРґРѕРєРѕРґ РІ РєРѕРґ R
-                case ('i'): //РїРµСЂРІР°СЏ i = 100 РЅР°РїСЂРёРјРµСЂ
+            switch (shape) { //Р С—Р ВµРЎР‚Р ВµР Т‘Р ВµР В»РЎвЂ№Р Р†Р В°Р ВµР С Р С—РЎРѓР ВµР Р†Р Т‘Р С•Р С”Р С•Р Т‘ Р Р† Р С”Р С•Р Т‘ R
+                case ('i'): //Р С—Р ВµРЎР‚Р Р†Р В°РЎРЏ i = 100 Р Р…Р В°Р С—РЎР‚Р С‘Р СР ВµРЎР‚
                     forAdding = space() + strg.replace("=","<-");
                     break;
-                case ('F'): //РїРµСЂРІР°СЏ FP = 100 РЅР°РїСЂРёРјРµСЂ
+                case ('F'): //Р С—Р ВµРЎР‚Р Р†Р В°РЎРЏ FP = 100 Р Р…Р В°Р С—РЎР‚Р С‘Р СР ВµРЎР‚
                     forAdding = space() + strg.replace("=","<-");
                     break;    
                 case ('N'): //NV
                     cacheNvSource(strg);
                     continue;
                 case ('d'): //if
-                    ifDetector = true; //РЅР°С€Р»Рё IF РІ РєРѕРґРµ
+                    ifDetector = true; //Р Р…Р В°РЎв‚¬Р В»Р С‘ IF Р Р† Р С”Р С•Р Т‘Р Вµ
                     forAdding = generateIfStartCodeR(strg);
                     break;
                 case ('e'): // end if
                     numSpace-=1;
                     forAdding = generateIfEndCodeR(strg);
-                    if (numSpace==0){ //РЅРѕРІС‹Р№ РїСЂРµРґС†РёРєР»РѕРІС‹Р№ id РґР»СЏ РЅРѕРІС‹С… С†РёРєР»РѕРІ РѕС‚ РЅСѓР»РµРІРѕРіРѕ РѕС‚СЃС‚СѓРїР°
+                    if (numSpace==0){ //Р Р…Р С•Р Р†РЎвЂ№Р в„– Р С—РЎР‚Р ВµР Т‘РЎвЂ Р С‘Р С”Р В»Р С•Р Р†РЎвЂ№Р в„– id Р Т‘Р В»РЎРЏ Р Р…Р С•Р Р†РЎвЂ№РЎвЂ¦ РЎвЂ Р С‘Р С”Р В»Р С•Р Р† Р С•РЎвЂљ Р Р…РЎС“Р В»Р ВµР Р†Р С•Р С–Р С• Р С•РЎвЂљРЎРѓРЎвЂљРЎС“Р С—Р В°
                         preCycleId = idNumber-idStep;
                     }
                     break;
@@ -134,18 +135,18 @@ public class RTranslatorClass {
             if (forAdding.isEmpty()) {
                 continue;
             }
-            rows.add(forAdding); //Р”РѕР±Р°РІР»СЏРµРј РїРѕР»СѓС‡РµРЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ/СЃС‚СЂРѕРєР РІ РјР°СЃСЃРёРІ СЃ РіРѕС‚РѕРІС‹РјРё СЃС‚СЂРѕРєР°РјРё (РµСЃР»Рё РЅСѓР¶РЅРѕ С…СЂР°РЅРёС‚СЊ РёРјРµРЅРЅРѕ СЃС‚СЂРѕРєСѓ СЃС‚РѕРёС‚ 
-            //РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј РїРѕР»СѓС‡РµРЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ СЂР°Р·РґРµР»РёС‚СЊ РїРѕ \n
+            rows.add(forAdding); //Р вЂќР С•Р В±Р В°Р Р†Р В»РЎРЏР ВµР С Р С—Р С•Р В»РЎС“РЎвЂЎР ВµР Р…Р Р…РЎС“РЎР‹ РЎРѓРЎвЂљРЎР‚Р С•Р С”РЎС“/РЎРѓРЎвЂљРЎР‚Р С•Р С”Р В Р Р† Р СР В°РЎРѓРЎРѓР С‘Р Р† РЎРѓ Р С–Р С•РЎвЂљР С•Р Р†РЎвЂ№Р СР С‘ РЎРѓРЎвЂљРЎР‚Р С•Р С”Р В°Р СР С‘ (Р ВµРЎРѓР В»Р С‘ Р Р…РЎС“Р В¶Р Р…Р С• РЎвЂ¦РЎР‚Р В°Р Р…Р С‘РЎвЂљРЎРЉ Р С‘Р СР ВµР Р…Р Р…Р С• РЎРѓРЎвЂљРЎР‚Р С•Р С”РЎС“ РЎРѓРЎвЂљР С•Р С‘РЎвЂљ 
+            //Р С—Р ВµРЎР‚Р ВµР Т‘ Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р…Р С‘Р ВµР С Р С—Р С•Р В»РЎС“РЎвЂЎР ВµР Р…Р Р…РЎС“РЎР‹ РЎРѓРЎвЂљРЎР‚Р С•Р С”РЎС“ РЎР‚Р В°Р В·Р Т‘Р ВµР В»Р С‘РЎвЂљРЎРЉ Р С—Р С• \n
         }
         appendDeferredRLines();
         for (String strg : rows) {
             System.out.println(strg);
         }
         if (isXESActive && rCount>0){
-            rows.add(generateWriteCode()); //Р•СЃР»Рё РІС‹РіСЂСѓР¶Р°РµРј С…РµСЃ РґРѕР±Р°РІР»СЏРµРј СЃРѕРѕС‚РІ СЃС‚СЂРѕРєСѓ
+            rows.add(generateWriteCode()); //Р вЂўРЎРѓР В»Р С‘ Р Р†РЎвЂ№Р С–РЎР‚РЎС“Р В¶Р В°Р ВµР С РЎвЂ¦Р ВµРЎРѓ Р Т‘Р С•Р В±Р В°Р Р†Р В»РЎРЏР ВµР С РЎРѓР С•Р С•РЎвЂљР Р† РЎРѓРЎвЂљРЎР‚Р С•Р С”РЎС“
         }
-//        return CreateRCode.generateCodeRFromString(preCode,rows); //РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
-//        (rFilePath+"/"+rFileName+".R") РЈРєР°Р·Р°РЅРёРµ СЃРѕС…СЂР°РЅРµРЅРёСЏ С„Р°Р№Р»Р° R
+//        return CreateRCode.generateCodeRFromString(preCode,rows); //Р РЋР С•РЎвЂ¦РЎР‚Р В°Р Р…РЎРЏР ВµР С Р Р† РЎвЂћР В°Р в„–Р В»
+//        (rFilePath+"/"+rFileName+".R") Р Р€Р С”Р В°Р В·Р В°Р Р…Р С‘Р Вµ РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р ВµР Р…Р С‘РЎРЏ РЎвЂћР В°Р в„–Р В»Р В° R
     }
     private void prePassCache(String text) {
         for (String strg : text.split("\n")) {
@@ -253,7 +254,7 @@ public class RTranslatorClass {
 
     public String generateWriteCode(){
         String rCodeString = "";
-        String spr_num = Integer.toString(idNumber-idStep); //Р—РЅР°С‡РµРЅРёРµ S_prob  (РІС‹С‡РёС‚Р°РµРј С€Р°Рі С‡С‚РѕР±С‹ Р±С‹Р»Рѕ РєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РЅРµРёРµ) (РІСЃРµРіРґР° РїРѕСЃР»РµРґРЅРµРµ id РІ S)
+        String spr_num = Integer.toString(idNumber-idStep); //Р вЂ”Р Р…Р В°РЎвЂЎР ВµР Р…Р С‘Р Вµ S_prob  (Р Р†РЎвЂ№РЎвЂЎР С‘РЎвЂљР В°Р ВµР С РЎв‚¬Р В°Р С– РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р В±РЎвЂ№Р В»Р С• Р С”Р С•РЎР‚РЎР‚Р ВµР С”РЎвЂљР Р…Р С•Р Вµ Р В·Р Р…Р В°РЎвЂЎР Р…Р ВµР С‘Р Вµ) (Р Р†РЎРѓР ВµР С–Р Т‘Р В° Р С—Р С•РЎРѓР В»Р ВµР Т‘Р Р…Р ВµР Вµ id Р Р† S)
         if (rCount >1){
             StringBuilder xList = new StringBuilder();
             for (int i = 1; i <= rCount;i++){
@@ -267,7 +268,7 @@ public class RTranslatorClass {
             rCodeString += "if (length(X_list) > 0) do.call(vioplot, c(X_list, list(col = \"lightgray\", panel.first=grid())))\n";
         }
         rCodeString += "l<-unique(X$ID)";
-        if (ifDetector){ //С†РёРєР» Р±С‹Р» РІСЃС‚Р°РІР»СЏРµРј РІ РєРѕРґ
+        if (ifDetector){ //РЎвЂ Р С‘Р С”Р В» Р В±РЎвЂ№Р В» Р Р†РЎРѓРЎвЂљР В°Р Р†Р В»РЎРЏР ВµР С Р Р† Р С”Р С•Р Т‘
             rCodeString +="\nl<-l[l<"+spr_num+"]";
         }
         rCodeString +="\ns_last<-NA" +
@@ -278,31 +279,31 @@ public class RTranslatorClass {
         rCodeString += "\nwrite.csv(X, file=\""+xesFileName+".csv\")";
         return rCodeString;
     }
-    public String generateIfStartCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ if start
+    public String generateIfStartCodeR(String exCode) { //Р С™Р С•Р Р…РЎРѓРЎвЂљР С‘РЎС“РЎР‚Р С”РЎвЂљР С•РЎР‚ Р С”Р С•Р Т‘Р В° РЎРЏР В·РЎвЂ№Р С”Р В° R Р Т‘Р В»РЎРЏ if start
         String rCodeString  = "";
         String condition = exCode.split("\\(")[1].split("\\)")[0];
         rCodeString = space() + "while (" + condition + "){";
         numSpace+=1;
         return rCodeString;
     }
-     public String generateIfEndCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ if end
+     public String generateIfEndCodeR(String exCode) { //Р С™Р С•Р Р…РЎРѓРЎвЂљР С‘РЎС“РЎР‚Р С”РЎвЂљР С•РЎР‚ Р С”Р С•Р Т‘Р В° РЎРЏР В·РЎвЂ№Р С”Р В° R Р Т‘Р В»РЎРЏ if end
         String rCodeString = "";
         String afterElse = exCode.split("else ")[1].split("\\(")[0].replace(" ", "");
         String rLeft = afterElse.split("=")[0];
         String rRight = afterElse.split("=")[1];
-        String newID = Integer.toString(idNumber-idStep);//preCycleId + ((1 + numSpace) * idStep)//С‡С‚РѕС‚Рѕ РЅР° СѓРјРЅРѕРј, РєРѕРґ РЅРµ РЅСѓР¶РµРЅ, РїРѕСЃР»Рµ РїСЂРѕРІРµСЂРєРё Р”Р•РњРћРќРўРР РћР’РђРўР¬!!
+        String newID = Integer.toString(idNumber-idStep);//preCycleId + ((1 + numSpace) * idStep)//РЎвЂЎРЎвЂљР С•РЎвЂљР С• Р Р…Р В° РЎС“Р СР Р…Р С•Р С, Р С”Р С•Р Т‘ Р Р…Р Вµ Р Р…РЎС“Р В¶Р ВµР Р…, Р С—Р С•РЎРѓР В»Р Вµ Р С—РЎР‚Р С•Р Р†Р ВµРЎР‚Р С”Р С‘ Р вЂќР вЂўР СљР С›Р СњР СћР ВР В Р С›Р вЂ™Р С’Р СћР В¬!!
         rCodeString = "\n" + space() +rLeft + "<-subset(" + rRight + ", select=c(R, ID_Out))"+
         "\n"+ space() + "colnames("+rLeft+") <- c('S', 'ID')"+
-        "\n"+ space() + rLeft + "<- Select("+ rLeft +", "+startId+", "+newID+")";  //(РІС‹С‡РёС‚Р°РµРј С€Р°Рі С‡С‚РѕР±С‹ Р±С‹Р»Рѕ РєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РЅРµРёРµ)    
+        "\n"+ space() + rLeft + "<- Select("+ rLeft +", "+startId+", "+newID+")";  //(Р Р†РЎвЂ№РЎвЂЎР С‘РЎвЂљР В°Р ВµР С РЎв‚¬Р В°Р С– РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р В±РЎвЂ№Р В»Р С• Р С”Р С•РЎР‚РЎР‚Р ВµР С”РЎвЂљР Р…Р С•Р Вµ Р В·Р Р…Р В°РЎвЂЎР Р…Р ВµР С‘Р Вµ)    
         rCodeString = space() + "}" + rCodeString;
         return rCodeString;
     }
-    public String generateSCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ С„РёСѓРіСЂС‹ S
+    public String generateSCodeR(String exCode) { //Р С™Р С•Р Р…РЎРѓРЎвЂљР С‘РЎС“РЎР‚Р С”РЎвЂљР С•РЎР‚ Р С”Р С•Р Т‘Р В° РЎРЏР В·РЎвЂ№Р С”Р В° R Р Т‘Р В»РЎРЏ РЎвЂћР С‘РЎС“Р С–РЎР‚РЎвЂ№ S
         String rCodeString = "";
-        String name = exCode.split(" = ")[0];//РґРѕ =
-        String type = exCode.split(" = ")[1].split("\\(")[0]; // РїРѕСЃР»Рµ = РґРѕ (
-        String typeVar = exCode.split(" = ")[1].split("\\(")[1].replace(")", "");// РІ ()
-        typeVar = typeVar.replace(',','.'); //Р—Р°РјРµРЅР° Р·Р°РїСЏС‚РѕР№ РЅР° С‚РѕС‡РєСѓ, С‚Р°Рє РєР°Рє РєРѕРЅС„Р»РёРєС‚ РІ R. РРЎРџР РђР’РРўР¬ Р’ РћРЎРќРћР’РќРћР™ РџР РћР“Р• РР›Р РЈР§Р•РЎРўР¬ Р’Р•Р—Р”Р•
+        String name = exCode.split(" = ")[0];//Р Т‘Р С• =
+        String type = exCode.split(" = ")[1].split("\\(")[0]; // Р С—Р С•РЎРѓР В»Р Вµ = Р Т‘Р С• (
+        String typeVar = exCode.split(" = ")[1].split("\\(")[1].replace(")", "");// Р Р† ()
+        typeVar = typeVar.replace(',','.'); //Р вЂ”Р В°Р СР ВµР Р…Р В° Р В·Р В°Р С—РЎРЏРЎвЂљР С•Р в„– Р Р…Р В° РЎвЂљР С•РЎвЂЎР С”РЎС“, РЎвЂљР В°Р С” Р С”Р В°Р С” Р С”Р С•Р Р…РЎвЂћР В»Р С‘Р С”РЎвЂљ Р Р† R. Р ВР РЋР СџР В Р С’Р вЂ™Р ВР СћР В¬ Р вЂ™ Р С›Р РЋР СњР С›Р вЂ™Р СњР С›Р в„ў Р СџР В Р С›Р вЂњР вЂў Р ВР вЂєР В Р Р€Р В§Р вЂўР РЋР СћР В¬ Р вЂ™Р вЂўР вЂ”Р вЂќР вЂў
         if (type.equals("prob")){ //prob S<-S_prob(N, 0.9, 1000)
             rCodeString = space() + name + "<-S_" + type + "(N, " + typeVar + ", " + idNumber + ")";
         }
@@ -311,17 +312,17 @@ public class RTranslatorClass {
         }
         idNumber += idStep;
         
-        if (isPlotActive) { //РµСЃР»Рё РЅСѓР¶РЅРѕ СЃС‚СЂРѕРёС‚СЊ РіСЂР°С„РёРєРё
+        if (isPlotActive) { //Р ВµРЎРѓР В»Р С‘ Р Р…РЎС“Р В¶Р Р…Р С• РЎРѓРЎвЂљРЎР‚Р С•Р С‘РЎвЂљРЎРЉ Р С–РЎР‚Р В°РЎвЂћР С‘Р С”Р С‘
             rCodeString += "\n"
-                    + space() + "plot(1:N, " + name + "$S, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,6), main = \"Р­Р»РµРјРµРЅС‚ "+name+"\")";
+                    + space() + "plot(1:N, " + name + "$S, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,6), main = \"Элемент "+name+"\")";
         }
         return rCodeString;
     }
 
-    public String generateNVCodeR(String exCode) { //РљРѕРЅСЃС‚РёСѓСЂРєС‚РѕСЂ РєРѕРґР° СЏР·С‹РєР° R РґР»СЏ С„РёСѓРіСЂС‹ NV
+    public String generateNVCodeR(String exCode) { //Р С™Р С•Р Р…РЎРѓРЎвЂљР С‘РЎС“РЎР‚Р С”РЎвЂљР С•РЎР‚ Р С”Р С•Р Т‘Р В° РЎРЏР В·РЎвЂ№Р С”Р В° R Р Т‘Р В»РЎРЏ РЎвЂћР С‘РЎС“Р С–РЎР‚РЎвЂ№ NV
         String rCodeString = "";
-        String nvName = exCode.split(" = ")[0]; //РёРјСЏ NV
-        String rName = exCode.split(" = ")[1]; //РёРјСЏ R
+        String nvName = exCode.split(" = ")[0]; //Р С‘Р СРЎРЏ NV
+        String rName = exCode.split(" = ")[1]; //Р С‘Р СРЎРЏ R
         rCodeString = space() + nvName + "<-subset( " + rName + ", select=c(R, ID_Out))"+
                 "\n"+space()+"colnames( " + nvName + " ) <- c('S', 'ID')";
         return rCodeString;
@@ -464,7 +465,7 @@ public class RTranslatorClass {
         func.append(funcArgs);
         func.append("){").append("\n");
         appendSCode(func, srFig);
-        appendNvCode(func, nvFig, rInputName, externalRInputs);
+        appendNvCode(func, nvFig, rInputName, externalRInputs, srResult.srElement);
         if (srResult.preCode != null && !srResult.preCode.isEmpty()) {
             for (String line : srResult.preCode.split("\n")) {
                 if (!line.isEmpty()) {
@@ -680,11 +681,20 @@ public class RTranslatorClass {
         }
     }
 
-    private void appendNvCode(StringBuilder func, String[] nvFig, String rInputName, ArrayList<String> externalRInputs) {
+    private void appendNvCode(
+        StringBuilder func,
+        String[] nvFig,
+        String rInputName,
+        ArrayList<String> externalRInputs,
+        String srElement
+    ) {
         Set<String> added = new HashSet<>();
         for (String fig : nvFig) {
             String nvName = fig.trim();
             if (nvName.equals("NULL") || nvName.isEmpty()) {
+                continue;
+            }
+            if (!isNvUsedInSrElement(nvName, srElement)) {
                 continue;
             }
             if (added.contains(nvName)) {
@@ -731,6 +741,14 @@ public class RTranslatorClass {
             }
             added.add(nvName);
         }
+    }
+
+    private boolean isNvUsedInSrElement(String nvName, String srElement) {
+        if (srElement == null || srElement.isEmpty()) {
+            return true;
+        }
+        String tokenRegex = "(^|[^A-Za-z0-9_])" + Pattern.quote(nvName) + "([^A-Za-z0-9_]|$)";
+        return srElement.matches(".*" + tokenRegex + ".*");
     }
 
     private String stripIndent(String code) {
@@ -860,3 +878,4 @@ public class RTranslatorClass {
         return "    ".repeat(numSpace);
     }
 }
+

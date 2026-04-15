@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,8 @@ import java.util.regex.Pattern;
 public class MicroserviceRBundleGenerator {
 
     private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("\\b[A-Za-z][A-Za-z0-9_]*\\b");
+    private static final Pattern WRITE_CSV_X_PATTERN = Pattern.compile("write\\.csv\\(\\s*X\\s*,\\s*file\\s*=\\s*\"([^\"]+)\"\\s*\\)");
+    private static final Pattern INT_ASSIGNMENT_PATTERN = Pattern.compile("^\\s*([A-Za-z][A-Za-z0-9_]*)\\s*<-\\s*([0-9]+)\\s*$");
 
     public MicroserviceGenerationResult generateBundle(String sequentialCode, Path outputRoot) throws IOException {
         if (sequentialCode == null) {
@@ -32,24 +35,17 @@ public class MicroserviceRBundleGenerator {
         Map<String, String> splitCode = splitSequentialCode(sequentialCode);
         String prelude = splitCode.get("prelude");
         String mainProgram = splitCode.get("main");
-        List<JobDefinition> jobs = parseJobs(mainProgram);
-        String postEffectsScript = buildPostEffectsScript(mainProgram);
+        List<JobDefinition> jobs = parseJobs(mainProgram, prelude);
+        
+        List<List<JobDefinition>> levels = computeTopologicalLevels(jobs);
+        RuntimeConfig runtimeConfig = parseRuntimeConfig(mainProgram);
 
-        writeString(bundleDir.resolve("common_prelude.R"), prelude);
-        writeString(bundleDir.resolve("orchestrator.R"), buildOrchestratorScript());
-        writeString(bundleDir.resolve("worker_exec.R"), buildWorkerScript());
-        writeString(bundleDir.resolve("run_local.R"), buildRunLocalScript());
-        writeString(bundleDir.resolve("post_effects.R"), postEffectsScript);
-        writeTopologyCsv(bundleDir.resolve("topology.csv"), jobs);
+        String futureBasedCode = buildFutureBasedCode(prelude, jobs, levels, runtimeConfig);
 
-        List<String> generated = List.of(
-                "topology.csv",
-                "common_prelude.R",
-                "orchestrator.R",
-                "worker_exec.R",
-                "run_local.R",
-                "post_effects.R"
-        );
+        writeString(bundleDir.resolve("run_microservice.R"), futureBasedCode);
+        writeString(bundleDir.resolve("run_local.R"), buildRunLocalWrapper());
+
+        List<String> generated = List.of("run_microservice.R", "run_local.R");
         return new MicroserviceGenerationResult(bundleDir, generated);
     }
 
@@ -57,22 +53,284 @@ public class MicroserviceRBundleGenerator {
         Files.writeString(target, content, StandardCharsets.UTF_8);
     }
 
-    private void writeTopologyCsv(Path target, List<JobDefinition> jobs) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        sb.append("id,lhs,rhs,deps\n");
-        for (JobDefinition job : jobs) {
-            String deps = String.join(";", job.deps);
-            sb.append(job.id).append(",")
-              .append(csv(job.lhs)).append(",")
-              .append(csv(job.rhs)).append(",")
-              .append(csv(deps)).append("\n");
+    private List<List<JobDefinition>> computeTopologicalLevels(List<JobDefinition> jobs) {
+        List<List<JobDefinition>> levels = new ArrayList<>();
+        
+        Set<String> completed = new HashSet<>();
+        Set<JobDefinition> remaining = new HashSet<>(jobs);
+        
+        while (!remaining.isEmpty()) {
+            List<JobDefinition> currentLevel = new ArrayList<>();
+            
+            for (JobDefinition job : remaining) {
+                boolean depsSatisfied = true;
+                for (String dep : job.deps) {
+                    if (!completed.contains(dep)) {
+                        depsSatisfied = false;
+                        break;
+                    }
+                }
+                if (depsSatisfied) {
+                    currentLevel.add(job);
+                }
+            }
+            
+            if (currentLevel.isEmpty() && !remaining.isEmpty()) {
+                currentLevel.addAll(remaining);
+            }
+            
+            levels.add(currentLevel);
+            for (JobDefinition job : currentLevel) {
+                remaining.remove(job);
+                completed.add(job.lhs);
+            }
         }
-        writeString(target, sb.toString());
+        
+        return levels;
     }
 
-    private String csv(String value) {
-        String v = value == null ? "" : value;
-        return "\"" + v.replace("\"", "\"\"") + "\"";
+    private String buildFutureBasedCode(String prelude, List<JobDefinition> jobs,
+            List<List<JobDefinition>> levels, RuntimeConfig runtimeConfig) {
+        StringBuilder code = new StringBuilder();
+        String sanitizedPrelude = stripInlinePlotsFromPrelude(prelude);
+        sanitizedPrelude = normalizePlotLabelsToEnglish(sanitizedPrelude);
+        String firstRName = "";
+        for (JobDefinition job : jobs) {
+            if (job.lhs != null && job.lhs.matches("^R\\d+$")) {
+                firstRName = job.lhs;
+                break;
+            }
+        }
+
+        code.append("# =============================================================================\n");
+        code.append("# EdPM Model - Microservice Execution using futures\n");
+        code.append("# Generated: ").append(LocalDateTime.now()).append("\n");
+        code.append("# =============================================================================\n\n");
+
+        // Library loading
+        code.append("# --- ==== [ Library Loading ] ==== ---\n");
+        code.append("# Auto-install missing packages (binary to avoid compilation issues)\n");
+        code.append("if (!requireNamespace('utils', quietly = TRUE)) install.packages('utils')\n");
+        code.append("options(repos = c(CRAN = 'https://cloud.r-project.org'), install.packages.compile.from.source = 'never')\n");
+        code.append("if (!requireNamespace('parallelly', quietly = TRUE)) {\n");
+        code.append("  tryCatch(install.packages('parallelly', type = 'binary', quiet = TRUE), error = function(e) NULL)\n");
+        code.append("}\n");
+        code.append("if (!requireNamespace('future', quietly = TRUE)) {\n");
+        code.append("  tryCatch(install.packages('future', type = 'binary', quiet = TRUE), error = function(e) NULL)\n");
+        code.append("}\n");
+        code.append("if (!requireNamespace('future.apply', quietly = TRUE)) {\n");
+        code.append("  tryCatch(install.packages('future.apply', type = 'binary', quiet = TRUE), error = function(e) NULL)\n");
+        code.append("}\n");
+        code.append("library(future)\n");
+        code.append("library(future.apply)\n\n");
+
+        // Configuration
+        code.append("# --- ==== [ Configuration ] ==== ---\n");
+        code.append("if (!exists('seed_value')) seed_value <- 12345L\n");
+        code.append("if (!exists('worker_count')) worker_count <- future::availableCores()\n");
+        code.append("set.seed(seed_value)\n\n");
+
+        // Plan selection
+        code.append("if (worker_count > 1) {\n");
+        code.append("  plan(multisession, workers = worker_count)\n");
+        code.append("  cat(sprintf('Using multisession plan with %d workers\\n', worker_count))\n");
+        code.append("} else {\n");
+        code.append("  plan(sequential)\n");
+        code.append("  cat('Using sequential plan (single worker)\\n')\n");
+        code.append("}\n\n");
+
+        // Base functions from prelude
+        code.append("# --- ==== [ Base Functions (from prelude) ] ==== ---\n");
+        code.append(sanitizedPrelude);
+        code.append("\n\n");
+
+        // Job execution with levels
+        code.append("# --- ==== [ Microservice Job Execution ] ==== ---\n");
+        code.append("# Jobs are organized by dependency levels for parallel execution\n\n");
+
+        code.append("# Runtime flags inherited from linear generation settings\n");
+        code.append("is_plot_active <- ").append(runtimeConfig.plotEnabled ? "TRUE" : "FALSE").append("\n");
+        code.append("is_xes_active <- ").append(runtimeConfig.xesEnabled ? "TRUE" : "FALSE").append("\n");
+        code.append("script_path <- NULL\n");
+        code.append("try({\n");
+        code.append("  ofile <- sys.frame(1)$ofile\n");
+        code.append("  if (!is.null(ofile) && length(ofile) > 0) script_path <- ofile\n");
+        code.append("}, silent = TRUE)\n");
+        code.append("if (is.null(script_path)) {\n");
+        code.append("  full_args <- commandArgs(trailingOnly = FALSE)\n");
+        code.append("  file_arg <- grep('^--file=', full_args, value = TRUE)\n");
+        code.append("  if (length(file_arg) > 0) script_path <- sub('^--file=', '', file_arg[1])\n");
+        code.append("}\n");
+        code.append("output_dir <- if (!is.null(script_path)) dirname(normalizePath(script_path, winslash='/', mustWork=FALSE)) else getwd()\n");
+        code.append("xes_file_name <- file.path(output_dir, basename(\"")
+            .append(escapeRString(runtimeConfig.xesFileName)).append("\"))\n");
+        code.append("plots_pdf_file <- file.path(output_dir, \"microservice_plots.pdf\")\n\n");
+        code.append("# Core scalar parameters (initialized once)\n");
+        code.append("N <- ").append(runtimeConfig.nValue).append("\n");
+        code.append("i <- ").append(runtimeConfig.iValue).append("\n");
+        code.append("FP <- ").append(runtimeConfig.fpValue).append("\n\n");
+        code.append("first_r_name <- \"").append(escapeRString(firstRName)).append("\"\n\n");
+        code.append("if (is_plot_active) {\n");
+        code.append("  if (capabilities(\"cairo\")) {\n");
+        code.append("    cairo_pdf(plots_pdf_file, width = 12, height = 8, family = \"Arial\", onefile = TRUE)\n");
+        code.append("  } else {\n");
+        code.append("    pdf(plots_pdf_file, width = 12, height = 8, onefile = TRUE)\n");
+        code.append("  }\n");
+        code.append("}\n\n");
+
+        code.append("# Environment to store results\n");
+        code.append("results_env <- new.env()\n\n");
+        code.append("empty_r_stream <- function() {\n");
+        code.append("  id_out <- vector(\"list\", N)\n");
+        code.append("  id_out[] <- list(0)\n");
+        code.append("  data.frame(R = rep(0, N), ID_Out = I(id_out))\n");
+        code.append("}\n\n");
+        code.append("# Accumulators for inline post-effects\n");
+        code.append("X <- NULL\n");
+        code.append("X_list <- list()\n\n");
+        code.append("process_r_result <- function(r_name, r_value) {\n");
+        code.append("  if (is.null(r_value) || !is.data.frame(r_value)) return(invisible(NULL))\n");
+        code.append("  if (!all(c(\"R\", \"Prj_File\") %in% names(r_value))) return(invisible(NULL))\n");
+        code.append("  assign(r_name, r_value, envir = .GlobalEnv)\n");
+        code.append("  if (is_plot_active) {\n");
+        code.append("    if (nzchar(first_r_name) && identical(r_name, first_r_name) && \"Prj_Flow\" %in% names(r_value)) {\n");
+        code.append("      plot(1:N, r_value$Prj_Flow, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,6), main = \"Element S1\")\n");
+        code.append("    }\n");
+        code.append("    plot(1:N, r_value$R, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = paste(\"Element\", r_name, \"Output\"))\n");
+        code.append("    plot(1:N, r_value$Prj_File, type=\"s\", col=\"black\", panel.first=grid(), ylab='S', xlab='i', ylim = c(0,15), main = paste(\"Element\", r_name, \"Queue\"))\n");
+        code.append("  }\n");
+        code.append("  if (is_xes_active) {\n");
+        code.append("    x_cur <- tryCatch(XES(r_value), error = function(e) NULL)\n");
+        code.append("    if (is.null(x_cur) || !is.data.frame(x_cur)) return(invisible(NULL))\n");
+        code.append("    if (is.null(X)) {\n");
+        code.append("      X <<- x_cur\n");
+        code.append("    } else {\n");
+        code.append("      X <<- rbind(X, x_cur)\n");
+        code.append("    }\n");
+        code.append("    if (length(x_cur$W) > 0) {\n");
+        code.append("      X_list[[length(X_list) + 1]] <<- x_cur$W\n");
+        code.append("      vioplot(x_cur$W, col = \"lightgray\", panel.first=grid(), main = paste(\"Element\", r_name))\n");
+        code.append("    }\n");
+        code.append("    if (!is.null(X) && length(X$W) > 0) {\n");
+        code.append("      vioplot(X$W, col = \"lightgray\", panel.first=grid(), main = paste(\"All elements before\", r_name))\n");
+        code.append("    }\n");
+        code.append("  }\n");
+        code.append("}\n\n");
+
+        for (int levelIdx = 0; levelIdx < levels.size(); levelIdx++) {
+            List<JobDefinition> level = levels.get(levelIdx);
+            code.append("# --- Level ").append(levelIdx + 1).append(" (").append(level.size()).append(" jobs) ---\n");
+            
+            if (level.size() == 1) {
+                JobDefinition job = level.get(0);
+                code.append("cat('Executing: ").append(job.lhs).append(" (level ").append(levelIdx + 1).append(")\\n');\n");
+                for (String dep : job.deps) {
+                    code.append("dep_").append(job.id).append("_").append(dep).append(" <- results_env$").append(dep).append("\n");
+                    if (dep.matches("^R\\d+$")) {
+                        code.append("if (is.null(dep_").append(job.id).append("_").append(dep).append(")) dep_")
+                                .append(job.id).append("_").append(dep).append(" <- empty_r_stream()\n");
+                    }
+                }
+                code.append("future_").append(job.id).append(" <- future({\n");
+                for (String dep : job.deps) {
+                    code.append("  ").append(dep).append(" <- dep_").append(job.id).append("_").append(dep).append("\n");
+                    code.append("  assign(\"").append(dep).append("\", ").append(dep).append(", envir = .GlobalEnv)\n");
+                }
+                code.append("  result <- ").append(job.rhs).append("\n");
+                code.append("  result\n");
+                code.append("}, seed = seed_value + ").append(job.id).append(")\n");
+                code.append("results_env$").append(job.lhs).append(" <- value(future_").append(job.id).append(")\n\n");
+                if (job.lhs.matches("^R\\d+$")) {
+                    code.append("process_r_result(\"").append(job.lhs).append("\", results_env$").append(job.lhs).append(")\n\n");
+                }
+            } else {
+                code.append("cat('Executing level ").append(levelIdx + 1).append(" in parallel (").append(level.size()).append(" jobs)...\\n');\n");
+                
+                code.append("# Define job functions for parallel execution\n");
+                for (JobDefinition job : level) {
+                    code.append("# Job ").append(job.id).append(": ").append(job.lhs).append("\n");
+                    for (String dep : job.deps) {
+                        code.append("dep_").append(job.id).append("_").append(dep).append(" <- results_env$").append(dep).append("\n");
+                        if (dep.matches("^R\\d+$")) {
+                            code.append("if (is.null(dep_").append(job.id).append("_").append(dep).append(")) dep_")
+                                    .append(job.id).append("_").append(dep).append(" <- empty_r_stream()\n");
+                        }
+                    }
+                    code.append("job_func_").append(job.id).append(" <- function() {\n");
+                    for (String dep : job.deps) {
+                        code.append("  ").append(dep).append(" <- dep_").append(job.id).append("_").append(dep).append("\n");
+                        code.append("  assign(\"").append(dep).append("\", ").append(dep).append(", envir = .GlobalEnv)\n");
+                    }
+                    code.append("  ").append(job.lhs).append(" <- ").append(job.rhs).append("\n");
+                    code.append("  return(").append(job.lhs).append(")\n");
+                    code.append("}\n");
+                }
+                
+                code.append("\n# Execute all jobs in this level in parallel\n");
+                code.append("job_functions <- list(\n");
+                for (int i = 0; i < level.size(); i++) {
+                    JobDefinition job = level.get(i);
+                    code.append("  function() job_func_").append(job.id).append("()");
+                    if (i < level.size() - 1) code.append(",");
+                    code.append(" # ").append(job.lhs).append("\n");
+                }
+                code.append(")\n\n");
+                
+                code.append("# Run all jobs in parallel using future_lapply\n");
+                code.append("level_results <- future_lapply(job_functions, function(f) f(), future.seed = TRUE)\n");
+                code.append("# Store results in environment\n");
+                for (int i = 0; i < level.size(); i++) {
+                    JobDefinition job = level.get(i);
+                    code.append("results_env$").append(job.lhs).append(" <- level_results[[").append(i + 1).append("]]\n");
+                }
+                for (JobDefinition job : level) {
+                    if (job.lhs.matches("^R\\d+$")) {
+                        code.append("process_r_result(\"").append(job.lhs).append("\", results_env$").append(job.lhs).append(")\n");
+                    }
+                }
+                code.append("\n");
+            }
+        }
+
+        code.append("# --- ==== [ Collect All Results ] ==== ---\n");
+        code.append("cat('\\n=== Collecting Results ===\\n')\n");
+        code.append("all_results <- list(\n");
+        for (int i = 0; i < jobs.size(); i++) {
+            JobDefinition job = jobs.get(i);
+            code.append("  ").append(job.lhs).append(" = results_env$").append(job.lhs);
+            if (i < jobs.size() - 1) code.append(",");
+            code.append("\n");
+        }
+        code.append(")\n\n");
+
+        code.append("# --- ==== [ Summary ] ==== ---\n");
+        code.append("cat('\\n=== Execution Summary ===\\n')\n");
+        code.append("cat('Total jobs:', length(all_results), '\\n')\n");
+        code.append("cat('Total levels:', ").append(levels.size()).append(", '\\n')\n");
+        code.append("cat('Produced variables:\\n')\n");
+        code.append("print(names(all_results))\n\n");
+        code.append("# --- ==== [ Finalize XES ] ==== ---\n");
+        code.append("if (is_xes_active && !is.null(X)) {\n");
+        code.append("  if (length(X_list) > 0) {\n");
+        code.append("    do.call(vioplot, c(X_list, list(col = \"lightgray\", panel.first=grid())))\n");
+        code.append("  }\n");
+        code.append("  l <- unique(X$ID)\n");
+        code.append("  s_last <- NA\n");
+        code.append("  for (i in 1:length(l)) {\n");
+        code.append("    s_last[i] <- sum(X$W[X$ID==l[i]])\n");
+        code.append("  }\n");
+        code.append("  if (length(s_last) > 0) vioplot(s_last, col = \"lightgray\", panel.first=grid())\n");
+        code.append("  write.csv(X, file=xes_file_name)\n");
+        code.append("}\n\n");
+        code.append("if (is_plot_active) {\n");
+        code.append("  try(dev.off(), silent = TRUE)\n");
+        code.append("}\n\n");
+
+        code.append("# --- ==== [ Cleanup ] ==== ---\n");
+        code.append("plan(sequential)\n");
+        code.append("cat('\\nMicroservice execution completed.\\n')\n");
+
+        return code.toString();
     }
 
     private Map<String, String> splitSequentialCode(String sequentialCode) {
@@ -90,7 +348,6 @@ public class MicroserviceRBundleGenerator {
             lineIndex += 1;
         }
 
-        // Safety net: if parser cut V*_func block out of prelude, append it explicitly.
         String preludeText = prelude.toString();
         if (!preludeText.contains("_func <- function(")) {
             String microBlock = extractMicroserviceBlock(sequentialCode);
@@ -107,18 +364,11 @@ public class MicroserviceRBundleGenerator {
 
     private int findMainStartIndex(String sequentialCode) {
         String[] lines = sequentialCode.split("\\R", -1);
-        int headerIndex = -1;
         for (int i = 0; i < lines.length; i++) {
             if (isMainProgramHeader(lines[i].trim())) {
-                headerIndex = i + 1;
-                break;
+                return i + 1;
             }
         }
-        if (headerIndex >= 0) {
-            return headerIndex;
-        }
-
-        // Fallback 1: typical start of generated main block.
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             if (!line.isEmpty() && Character.isWhitespace(line.charAt(0))) {
@@ -129,8 +379,6 @@ public class MicroserviceRBundleGenerator {
                 return i;
             }
         }
-
-        // Fallback: first top-level assignment that is not a function definition.
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             if (!line.isEmpty() && Character.isWhitespace(line.charAt(0))) {
@@ -156,8 +404,7 @@ public class MicroserviceRBundleGenerator {
         int start = -1;
         int end = lines.length;
         for (int i = 0; i < lines.length; i++) {
-            String lower = lines[i].toLowerCase();
-            if (lower.contains("РјРёРєСЂРѕСЃРµСЂРІРёСЃ") || lower.contains("microservice")) {
+            if (lines[i].toLowerCase().contains("microservice")) {
                 start = i;
                 break;
             }
@@ -168,8 +415,7 @@ public class MicroserviceRBundleGenerator {
         for (int i = start + 1; i < lines.length; i++) {
             String trimmed = lines[i].trim();
             if (trimmed.startsWith("# --- ==== [") && trimmed.contains("==== ---")
-                    && (trimmed.toLowerCase().contains("РѕСЃРЅРѕРІРЅР°СЏ РїСЂРѕРіСЂР°РјРјР°")
-                    || trimmed.toLowerCase().contains("main program"))) {
+                    && trimmed.toLowerCase().contains("main program")) {
                 end = i;
                 break;
             }
@@ -189,24 +435,19 @@ public class MicroserviceRBundleGenerator {
         if (!trimmed.startsWith("# --- ==== [") || !trimmed.contains("==== ---")) {
             return false;
         }
-        String lower = trimmed.toLowerCase();
-        return lower.contains("РѕСЃРЅРѕРІРЅР°СЏ РїСЂРѕРіСЂР°РјРјР°")
-                || lower.contains("main program");
+        return trimmed.toLowerCase().contains("main program");
     }
 
-    private List<JobDefinition> parseJobs(String mainProgram) {
+    private List<JobDefinition> parseJobs(String mainProgram, String prelude) {
         List<JobDefinition> jobs = new ArrayList<>();
         List<String> lines = new ArrayList<>();
+        
         for (String line : mainProgram.split("\\R")) {
             if (!line.isEmpty() && Character.isWhitespace(line.charAt(0))) {
-                // Only top-level statements become jobs.
                 continue;
             }
             String trimmed = line.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
-            if (trimmed.startsWith("#")) {
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                 continue;
             }
             if (trimmed.contains("function(")) {
@@ -225,14 +466,14 @@ public class MicroserviceRBundleGenerator {
         Set<String> producedVars = new LinkedHashSet<>();
         for (String line : lines) {
             String[] parts = line.split("<-", 2);
-            if (parts.length < 2) {
-                continue;
-            }
-            String lhs = parts[0].trim();
-            if (!lhs.isEmpty()) {
-                producedVars.add(lhs);
+            if (parts.length >= 2) {
+                String lhs = parts[0].trim();
+                if (!lhs.isEmpty()) {
+                    producedVars.add(lhs);
+                }
             }
         }
+        Map<String, Set<String>> functionDependencies = extractFunctionDependencies(prelude, producedVars);
 
         int id = 1;
         for (String line : lines) {
@@ -252,7 +493,7 @@ public class MicroserviceRBundleGenerator {
             if (lhs.isEmpty() || rhs.isEmpty()) {
                 continue;
             }
-            List<String> deps = extractDependencies(rhs, lhs, producedVars);
+            List<String> deps = extractDependencies(rhs, lhs, producedVars, functionDependencies);
             jobs.add(new JobDefinition(id, lhs, rhs, deps));
             id += 1;
         }
@@ -263,473 +504,149 @@ public class MicroserviceRBundleGenerator {
         if (lhs == null || lhs.isEmpty()) {
             return false;
         }
-        if (lhs.equals("N") || lhs.equals("i") || lhs.equals("FP")) {
-            return true;
-        }
         return lhs.matches("^R\\d+$");
     }
 
-    private String buildPostEffectsScript(String mainProgram) {
-        StringBuilder body = new StringBuilder();
+    private RuntimeConfig parseRuntimeConfig(String mainProgram) {
+        boolean plotEnabled = mainProgram.contains("plot(");
+        boolean xesEnabled = mainProgram.contains("XES(") || mainProgram.contains("write.csv(X");
+        String xesFileName = "xesik.csv";
+        int nValue = 30;
+        int iValue = 1;
+        int fpValue = 1;
         for (String line : mainProgram.split("\\R")) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) {
-                body.append("\n");
+            Matcher m = INT_ASSIGNMENT_PATTERN.matcher(line.trim());
+            if (!m.matches()) {
                 continue;
             }
-            if (trimmed.startsWith("#")) {
-                body.append(line).append("\n");
-                continue;
+            String var = m.group(1);
+            int value = Integer.parseInt(m.group(2));
+            if (var.equals("N")) {
+                nValue = value;
+            } else if (var.equals("i")) {
+                iValue = value;
+            } else if (var.equals("FP")) {
+                fpValue = value;
             }
-            if (trimmed.contains("function(")) {
-                continue;
-            }
-            if (trimmed.contains("<-")) {
-                String lhs = trimmed.split("<-", 2)[0].trim();
-                if (isCoreAssignmentLhs(lhs)) {
-                    continue;
-                }
-            }
-            body.append(line).append("\n");
         }
-
-        return ""
-                + "source('common_prelude.R')\n"
-                + "if (file.exists('runtime/state.rds')) {\n"
-                + "  state <- readRDS('runtime/state.rds')\n"
-                + "  for (nm in names(state)) assign(nm, state[[nm]], envir = .GlobalEnv)\n"
-                + "}\n"
-                + "dir.create('runtime', showWarnings = FALSE, recursive = TRUE)\n"
-                + "setwd(getwd())\n"
-                + "\n"
-                + "# --- Post-effects block from generated main program ---\n"
-                + body
-                + "\n";
+        Matcher matcher = WRITE_CSV_X_PATTERN.matcher(mainProgram);
+        if (matcher.find()) {
+            xesFileName = matcher.group(1);
+        }
+        return new RuntimeConfig(plotEnabled, xesEnabled, xesFileName, nValue, iValue, fpValue);
     }
 
-    private List<String> extractDependencies(String rhs, String lhs, Set<String> producedVars) {
-        Set<String> deps = new LinkedHashSet<>();
+    private String buildRunLocalWrapper() {
+        return """
+args <- commandArgs(trailingOnly = TRUE)
+worker_count <- if (length(args) >= 1) as.integer(args[[1]]) else 1L
+seed_value <- if (length(args) >= 2) as.integer(args[[2]]) else 12345L
+if (is.na(worker_count) || worker_count < 1) worker_count <- 1L
+if (is.na(seed_value)) seed_value <- 12345L
+source("run_microservice.R")
+""";
+    }
+
+    private String escapeRString(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private String stripInlinePlotsFromPrelude(String prelude) {
+        if (prelude == null || prelude.isBlank()) {
+            return prelude;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String line : prelude.split("\\R", -1)) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("plot(") || trimmed.startsWith("vioplot(")) {
+                continue;
+            }
+            sb.append(line).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String normalizePlotLabelsToEnglish(String code) {
+        if (code == null || code.isBlank()) {
+            return code;
+        }
+        return code
+            .replace("Элемент ", "Element ")
+            .replace("Все элементы до ", "All elements before ");
+    }
+
+    private List<String> extractDependencies(String rhs, String lhs, Set<String> producedVars,
+            Map<String, Set<String>> functionDependencies) {
+        List<String> deps = new ArrayList<>();
         Matcher matcher = IDENTIFIER_PATTERN.matcher(rhs);
         while (matcher.find()) {
-            String token = matcher.group();
-            if (token.equals(lhs)) {
-                continue;
-            }
-            if (isReservedToken(token)) {
-                continue;
-            }
-            if (token.endsWith("_func")) {
-                continue;
-            }
-            // Core EdPM runtime variables must always be tracked as dependencies.
-            if (token.matches("^R\\d+$") || token.equals("N") || token.equals("i") || token.equals("FP")) {
-                deps.add(token);
-                continue;
-            }
-            if (producedVars.contains(token)) {
-                deps.add(token);
+            String ident = matcher.group();
+            if (producedVars.contains(ident) && !ident.equals(lhs)) {
+                if (!deps.contains(ident)) {
+                    deps.add(ident);
+                }
             }
         }
-        return new ArrayList<>(deps);
+        Matcher funcCallMatcher = Pattern.compile("\\b([A-Za-z][A-Za-z0-9_]*)\\s*\\(").matcher(rhs);
+        while (funcCallMatcher.find()) {
+            String functionName = funcCallMatcher.group(1);
+            Set<String> fnDeps = functionDependencies.get(functionName);
+            if (fnDeps == null) {
+                continue;
+            }
+            for (String dep : fnDeps) {
+                if (!dep.equals(lhs) && !deps.contains(dep)) {
+                    deps.add(dep);
+                }
+            }
+        }
+        return deps;
     }
 
-    private boolean isReservedToken(String token) {
-        return token.equals("if")
-                || token.equals("for")
-                || token.equals("while")
-                || token.equals("repeat")
-                || token.equals("TRUE")
-                || token.equals("FALSE")
-                || token.equals("NULL");
-    }
-
-    private String buildRunLocalScript() {
-        return ""
-                + "args <- commandArgs(trailingOnly = TRUE)\n"
-                + "worker_count <- if (length(args) >= 1) as.integer(args[[1]]) else 2L\n"
-                + "seed_value <- if (length(args) >= 2) as.integer(args[[2]]) else 12345L\n"
-                + "strict_repro <- if (length(args) >= 3) as.integer(args[[3]]) != 0 else TRUE\n"
-                + "if (is.na(worker_count) || worker_count < 1) worker_count <- 2L\n"
-                + "if (is.na(seed_value)) seed_value <- 12345L\n"
-                + "if (is.na(strict_repro)) strict_repro <- TRUE\n"
-                + "if (strict_repro) worker_count <- 1L\n"
-                + "set.seed(seed_value)\n"
-                + "\n"
-                + "dir.create('runtime', showWarnings = FALSE, recursive = TRUE)\n"
-                + "unlink(list.files('runtime', full.names = TRUE, recursive = TRUE), recursive = TRUE, force = TRUE)\n"
-                + "dir.create('runtime', showWarnings = FALSE, recursive = TRUE)\n"
-                + "writeLines(c(\n"
-                + "  sprintf('seed=%d', seed_value),\n"
-                + "  sprintf('worker_count=%d', worker_count),\n"
-                + "  sprintf('strict_repro=%s', ifelse(strict_repro, '1', '0'))\n"
-                + "), 'runtime/run_config.txt')\n"
-                + "\n"
-                + "rscript_bin <- file.path(R.home('bin'), ifelse(.Platform$OS.type == 'windows', 'Rscript.exe', 'Rscript'))\n"
-                + "for (i in seq_len(worker_count)) {\n"
-                + "  out_log <- sprintf('runtime/worker_%02d.log', i)\n"
-                + "  worker_seed <- as.integer(seed_value + i - 1L)\n"
-                + "  system2(rscript_bin, args = c('worker_exec.R', ifelse(strict_repro, '1', '0'), as.character(worker_seed), as.character(i)), wait = FALSE, stdout = out_log, stderr = out_log)\n"
-                + "}\n"
-                + "\n"
-                + "source('orchestrator.R')\n";
-    }
-
-    private String buildOrchestratorScript() {
-        return ""
-                + "jobs <- read.csv('topology.csv', stringsAsFactors = FALSE)\n"
-                + "if (nrow(jobs) == 0) stop('No jobs in topology.csv')\n"
-                + "if (!exists('seed_value', inherits = FALSE)) seed_value <- 12345L\n"
-                + "if (!exists('worker_count', inherits = FALSE)) worker_count <- 1L\n"
-                + "if (!exists('strict_repro', inherits = FALSE)) strict_repro <- TRUE\n"
-                + "\n"
-                + "dir.create('runtime', showWarnings = FALSE, recursive = TRUE)\n"
-                + "dir.create('runtime/jobs_pending', showWarnings = FALSE, recursive = TRUE)\n"
-                + "dir.create('runtime/jobs_working', showWarnings = FALSE, recursive = TRUE)\n"
-                + "dir.create('runtime/results', showWarnings = FALSE, recursive = TRUE)\n"
-                + "unlink('runtime/stop.signal')\n"
-                + "saveRDS(list(), 'runtime/state.rds')\n"
-                + "summary_csv <- 'runtime/run_summary.csv'\n"
-                + "summary_txt <- 'runtime/run_summary.txt'\n"
-                + "writeLines('time,event,job_id,lhs,status,message', summary_csv)\n"
-                + "\n"
-                + "done_vars <- character(0)\n"
-                + "queued_ids <- integer(0)\n"
-                + "finished_ids <- integer(0)\n"
-                + "completed_order <- character(0)\n"
-                + "total_jobs <- nrow(jobs)\n"
-                + "idle_ticks <- 0\n"
-                + "stagnation_ticks <- 0\n"
-                + "\n"
-                + "csv_safe <- function(x) {\n"
-                + "  if (is.null(x) || length(x) == 0) return('')\n"
-                + "  v <- as.character(x)\n"
-                + "  v <- gsub('\"', \"'\", v, fixed = TRUE)\n"
-                + "  v <- gsub(',', ';', v, fixed = TRUE)\n"
-                + "  v\n"
-                + "}\n"
-                + "\n"
-                + "summary_add <- function(event, job_id, lhs, status, message) {\n"
-                + "  row <- sprintf('%s,%s,%s,%s,%s,%s',\n"
-                + "    format(Sys.time(), '%Y-%m-%d %H:%M:%S'),\n"
-                + "    csv_safe(event), csv_safe(job_id), csv_safe(lhs), csv_safe(status), csv_safe(message))\n"
-                + "  write(row, file = summary_csv, append = TRUE)\n"
-                + "}\n"
-                + "summary_add('config', '', '', 'ok', sprintf('seed=%d;worker_count=%d;strict_repro=%s', as.integer(seed_value), as.integer(worker_count), ifelse(strict_repro, '1', '0')))\n"
-                + "\n"
-                + "if (strict_repro) {\n"
-                + "  produced_lhs <- unique(as.character(jobs$lhs))\n"
-                + "  known_roots <- c('N', 'i', 'FP')\n"
-                + "  missing_producers <- character(0)\n"
-                + "  for (i in seq_len(nrow(jobs))) {\n"
-                + "    dep_str <- jobs$deps[i]\n"
-                + "    if (is.na(dep_str) || dep_str == '') next\n"
-                + "    deps <- unlist(strsplit(dep_str, ';', fixed = TRUE))\n"
-                + "    deps <- deps[deps != '']\n"
-                + "    for (d in deps) {\n"
-                + "      if (!(d %in% produced_lhs) && !(d %in% known_roots)) {\n"
-                + "        missing_producers <- c(missing_producers, sprintf('%s needs %s', jobs$lhs[i], d))\n"
-                + "      }\n"
-                + "    }\n"
-                + "  }\n"
-                + "  if (length(missing_producers) > 0) {\n"
-                + "    missing_producers <- unique(missing_producers)\n"
-                + "    msg <- paste('Strict mode missing producer(s):', paste(missing_producers, collapse = ' | '))\n"
-                + "    summary_add('model_error', '', '', 'error', msg)\n"
-                + "    stop(msg)\n"
-                + "  }\n"
-                + "}\n"
-                + "\n"
-                + "deps_ready <- function(dep_str, done_set) {\n"
-                + "  if (is.na(dep_str) || dep_str == '') return(TRUE)\n"
-                + "  deps <- unlist(strsplit(dep_str, ';', fixed = TRUE))\n"
-                + "  deps <- deps[deps != '']\n"
-                + "  if (length(deps) == 0) return(TRUE)\n"
-                + "  all(deps %in% done_set)\n"
-                + "}\n"
-                + "\n"
-                + "enqueue_ready <- function() {\n"
-                + "  for (i in seq_len(nrow(jobs))) {\n"
-                + "    job_id <- jobs$id[i]\n"
-                + "    if (job_id %in% queued_ids) next\n"
-                + "    if (!deps_ready(jobs$deps[i], done_vars)) next\n"
-                + "    job <- list(id = job_id, lhs = jobs$lhs[i], rhs = jobs$rhs[i], deps = jobs$deps[i])\n"
-                + "    saveRDS(job, sprintf('runtime/jobs_pending/job_%04d.rds', job_id))\n"
-                + "    queued_ids <<- c(queued_ids, job_id)\n"
-                + "    cat(sprintf('Queued job #%d: %s <- %s\\n', job_id, job$lhs, job$rhs))\n"
-                + "    summary_add('queued', job_id, job$lhs, 'ok', '')\n"
-                + "  }\n"
-                + "}\n"
-                + "\n"
-                + "enqueue_ready()\n"
-                + "while (length(finished_ids) < total_jobs) {\n"
-                + "  result_files <- list.files('runtime/results', pattern = '^result_.*\\\\.rds$', full.names = TRUE)\n"
-                + "  if (length(result_files) == 0) {\n"
-                + "    Sys.sleep(0.2)\n"
-                + "    enqueue_ready()\n"
-                + "    idle_ticks <- idle_ticks + 1\n"
-                + "    pending_now <- list.files('runtime/jobs_pending', pattern = '^job_.*\\\\.rds$', full.names = TRUE)\n"
-                + "    working_now <- list.files('runtime/jobs_working', pattern = '^job_.*\\\\.rds$', full.names = TRUE)\n"
-                + "    if (length(pending_now) == 0 && length(working_now) == 0 && length(queued_ids) < total_jobs) {\n"
-                + "      stagnation_ticks <- stagnation_ticks + 1\n"
-                + "      if (strict_repro && stagnation_ticks >= 5) {\n"
-                + "        unresolved_idx <- which(!(jobs$id %in% queued_ids))\n"
-                + "        unresolved <- jobs[unresolved_idx, , drop = FALSE]\n"
-                + "        unresolved_msgs <- character(0)\n"
-                + "        for (k in seq_len(nrow(unresolved))) {\n"
-                + "          dep_str <- unresolved$deps[k]\n"
-                + "          missing <- character(0)\n"
-                + "          if (!is.na(dep_str) && dep_str != '') {\n"
-                + "            deps <- unlist(strsplit(dep_str, ';', fixed = TRUE))\n"
-                + "            deps <- deps[deps != '']\n"
-                + "            missing <- deps[!(deps %in% done_vars)]\n"
-                + "          }\n"
-                + "          unresolved_msgs <- c(unresolved_msgs, sprintf('%s missing [%s]', unresolved$lhs[k], paste(missing, collapse = ';')))\n"
-                + "        }\n"
-                + "        deadlock_msg <- paste('Strict mode deadlock/cycle detected:', paste(unresolved_msgs, collapse = ' | '))\n"
-                + "        summary_add('deadlock', '', '', 'error', deadlock_msg)\n"
-                + "        stop(deadlock_msg)\n"
-                + "      }\n"
-                + "    } else {\n"
-                + "      stagnation_ticks <- 0\n"
-                + "    }\n"
-                + "    if (idle_ticks > 3000) stop('Timeout waiting for workers/results')\n"
-                + "    next\n"
-                + "  }\n"
-                + "  idle_ticks <- 0\n"
-                + "  stagnation_ticks <- 0\n"
-                + "  for (rf in result_files) {\n"
-                + "    res <- readRDS(rf)\n"
-                + "    unlink(rf)\n"
-                + "    if (!(res$id %in% finished_ids)) {\n"
-                + "      finished_ids <- c(finished_ids, res$id)\n"
-                + "      if (identical(res$status, 'ok')) {\n"
-                + "        if (!startsWith(res$lhs, '__effect_')) {\n"
-                + "          done_vars <- unique(c(done_vars, res$lhs))\n"
-                + "        }\n"
-                + "        completed_order <- c(completed_order, res$lhs)\n"
-                + "        cat(sprintf('Completed: %s\\n', res$lhs))\n"
-                + "        summary_add('completed', res$id, res$lhs, 'ok', '')\n"
-                + "      } else {\n"
-                + "        summary_add('failed', res$id, res$lhs, 'error', res$message)\n"
-                + "        stop(sprintf('Worker failed for %s: %s', res$lhs, res$message))\n"
-                + "      }\n"
-                + "    }\n"
-                + "  }\n"
-                + "  enqueue_ready()\n"
-                + "}\n"
-                + "\n"
-                + "file.create('runtime/stop.signal')\n"
-                + "state <- readRDS('runtime/state.rds')\n"
-                + "cat('\\nMicroservice run completed. Produced variables:\\n')\n"
-                + "print(names(state))\n"
-                + "post_effects_error <- NULL\n"
-                + "if (file.exists('post_effects.R')) {\n"
-                + "  cat('\\nRunning post-effects (plots/xes/csv)...\\n')\n"
-                + "  tryCatch({\n"
-                + "    source('post_effects.R')\n"
-                + "    summary_add('post_effects', '', '', 'ok', '')\n"
-                + "  }, error = function(e) {\n"
-                + "    post_effects_error <<- as.character(e$message)\n"
-                + "    summary_add('post_effects', '', '', 'error', post_effects_error)\n"
-                + "  })\n"
-                + "}\n"
-                + "cleanup_dir_if_empty <- function(path) {\n"
-                + "  if (!dir.exists(path)) return(invisible(FALSE))\n"
-                + "  files <- list.files(path, all.files = FALSE, no.. = TRUE)\n"
-                + "  if (length(files) == 0) {\n"
-                + "    unlink(path, recursive = TRUE, force = TRUE)\n"
-                + "    return(invisible(TRUE))\n"
-                + "  }\n"
-                + "  invisible(FALSE)\n"
-                + "}\n"
-                + "cleanup_dir_if_empty('runtime/jobs_pending')\n"
-                + "cleanup_dir_if_empty('runtime/jobs_working')\n"
-                + "cleanup_dir_if_empty('runtime/results')\n"
-                + "summary_lines <- c(\n"
-                + "  sprintf('Seed: %d', as.integer(seed_value)),\n"
-                + "  sprintf('Worker count: %d', as.integer(worker_count)),\n"
-                + "  sprintf('Strict reproducible: %s', ifelse(strict_repro, 'TRUE', 'FALSE')),\n"
-                + "  sprintf('Total jobs: %d', total_jobs),\n"
-                + "  sprintf('Completed jobs: %d', length(finished_ids)),\n"
-                + "  sprintf('Completion order: %s', paste(completed_order, collapse = ' -> ')),\n"
-                + "  sprintf('Produced variables: %s', paste(names(state), collapse = ', ')),\n"
-                + "  sprintf('Summary CSV: %s', summary_csv),\n"
-                + "  sprintf('State file: %s', 'runtime/state.rds')\n"
-                + ")\n"
-                + "writeLines(summary_lines, summary_txt)\n"
-                + "if (!is.null(post_effects_error)) {\n"
-                + "  stop(post_effects_error)\n"
-                + "}\n";
-    }
-
-    private String buildWorkerScript() {
-        return ""
-                + "source('common_prelude.R')\n"
-                + "\n"
-                + "# Compatibility wrapper: generated models may pass complexity codes outside 1..4.\n"
-                + "if (exists('V', mode = 'function')) {\n"
-                + "  V_orig_edpm <- V\n"
-                + "  V <- function(m, S, V, O) {\n"
-                + "    mm <- suppressWarnings(as.integer(m))\n"
-                + "    if (is.na(mm)) mm <- 1L\n"
-                + "    if (mm < 1L || mm > 4L) mm <- 1L\n"
-                + "    V_orig_edpm(mm, S, V, O)\n"
-                + "  }\n"
-                + "}\n"
-                + "args <- commandArgs(trailingOnly = TRUE)\n"
-                + "strict_repro <- if (length(args) >= 1) as.integer(args[[1]]) != 0 else TRUE\n"
-                + "worker_seed <- if (length(args) >= 2) as.integer(args[[2]]) else 12345L\n"
-                + "worker_index <- if (length(args) >= 3) as.integer(args[[3]]) else 1L\n"
-                + "if (is.na(strict_repro)) strict_repro <- TRUE\n"
-                + "if (is.na(worker_seed)) worker_seed <- 12345L\n"
-                + "if (is.na(worker_index) || worker_index < 1) worker_index <- 1L\n"
-                + "set.seed(worker_seed)\n"
-                + "\n"
-                + "dir.create('runtime', showWarnings = FALSE, recursive = TRUE)\n"
-                + "dir.create('runtime/jobs_pending', showWarnings = FALSE, recursive = TRUE)\n"
-                + "dir.create('runtime/jobs_working', showWarnings = FALSE, recursive = TRUE)\n"
-                + "dir.create('runtime/results', showWarnings = FALSE, recursive = TRUE)\n"
-                + "\n"
-                + "state_file <- 'runtime/state.rds'\n"
-                + "lock_file <- paste0(state_file, '.lock')\n"
-                + "\n"
-                + "acquire_lock <- function(path) {\n"
-                + "  repeat {\n"
-                + "    ok <- file.create(path)\n"
-                + "    if (ok) return(invisible(TRUE))\n"
-                + "    Sys.sleep(0.03)\n"
-                + "  }\n"
-                + "}\n"
-                + "\n"
-                + "release_lock <- function(path) {\n"
-                + "  if (file.exists(path)) unlink(path)\n"
-                + "}\n"
-                + "\n"
-                + "default_value_for <- function(name) {\n"
-                + "  if (grepl('^R', name)) {\n"
-                + "    return(data.frame(R = 0, ID_Out = I(list(0))))\n"
-                + "  }\n"
-                + "  if (grepl('^NV', name)) {\n"
-                + "    return(data.frame(S = 0, ID = I(list(0))))\n"
-                + "  }\n"
-                + "  if (name %in% c('N', 'i', 'FP')) {\n"
-                + "    return(0)\n"
-                + "  }\n"
-                + "  return(0)\n"
-                + "}\n"
-                + "\n"
-                + "ensure_seed <- function(name, state, env) {\n"
-                + "  if (is.null(name) || is.na(name) || name == '') return(state)\n"
-                + "  if (!exists(name, envir = env, inherits = FALSE)) {\n"
-                + "    seed <- default_value_for(name)\n"
-                + "    assign(name, seed, envir = env)\n"
-                + "    state[[name]] <- seed\n"
-                + "  }\n"
-                + "  state\n"
-                + "}\n"
-                + "\n"
-                + "extract_missing_name <- function(msg) {\n"
-                + "  m1 <- regexec(\"object '([^']+)' not found\", msg)\n"
-                + "  p1 <- regmatches(msg, m1)[[1]]\n"
-                + "  if (length(p1) >= 2) return(p1[2])\n"
-                + "  m2 <- regexec(\"РѕР±СЉРµРєС‚ '([^']+)' РЅРµ РЅР°Р№РґРµРЅ\", msg)\n"
-                + "  p2 <- regmatches(msg, m2)[[1]]\n"
-                + "  if (length(p2) >= 2) return(p2[2])\n"
-                + "  q <- regexec(\"'([^']+)'\", msg)\n"
-                + "  pq <- regmatches(msg, q)[[1]]\n"
-                + "  if (length(pq) >= 2) return(pq[2])\n"
-                + "  return(NA_character_)\n"
-                + "}\n"
-                + "\n"
-                + "claim_job <- function() {\n"
-                + "  pending <- list.files('runtime/jobs_pending', pattern = '^job_.*\\\\.rds$', full.names = TRUE)\n"
-                + "  if (length(pending) == 0) return(NULL)\n"
-                + "  pending <- sort(pending)\n"
-                + "  for (p in pending) {\n"
-                + "    w <- sub('jobs_pending', 'jobs_working', p, fixed = TRUE)\n"
-                + "    ok <- file.rename(p, w)\n"
-                + "    if (ok) return(w)\n"
-                + "  }\n"
-                + "  NULL\n"
-                + "}\n"
-                + "\n"
-                + "cat('Worker started...\\n')\n"
-                + "repeat {\n"
-                + "  stop_signal <- file.exists('runtime/stop.signal')\n"
-                + "  job_file <- claim_job()\n"
-                + "  if (is.null(job_file)) {\n"
-                + "    if (stop_signal) break\n"
-                + "    Sys.sleep(0.1)\n"
-                + "    next\n"
-                + "  }\n"
-                + "\n"
-                + "  job <- readRDS(job_file)\n"
-                + "  status <- 'ok'\n"
-                + "  message <- ''\n"
-                + "\n"
-                + "  acquire_lock(lock_file)\n"
-                + "  tryCatch({\n"
-                + "    state <- if (file.exists(state_file)) readRDS(state_file) else list()\n"
-                + "    if (length(state) > 0) {\n"
-                + "      for (nm in names(state)) assign(nm, state[[nm]], envir = .GlobalEnv)\n"
-                + "    }\n"
-                + "    value <- NULL\n"
-                + "    if (strict_repro) {\n"
-                + "      value <- eval(parse(text = job$rhs), envir = .GlobalEnv)\n"
-                + "    } else {\n"
-                + "      # Legacy relaxed behavior for compatibility mode.\n"
-                + "      for (base_nm in c('N', 'i', 'FP')) {\n"
-                + "        state <- ensure_seed(base_nm, state, .GlobalEnv)\n"
-                + "      }\n"
-                + "      if (!is.null(job$deps) && !is.na(job$deps) && job$deps != '') {\n"
-                + "        deps <- unlist(strsplit(as.character(job$deps), ';', fixed = TRUE))\n"
-                + "        deps <- deps[deps != '']\n"
-                + "        for (dn in deps) {\n"
-                + "          state <- ensure_seed(dn, state, .GlobalEnv)\n"
-                + "        }\n"
-                + "      }\n"
-                + "      attempt <- 1\n"
-                + "      max_attempts <- 20\n"
-                + "      repeat {\n"
-                + "        ok <- TRUE\n"
-                + "        tryCatch({\n"
-                + "          value <- eval(parse(text = job$rhs), envir = .GlobalEnv)\n"
-                + "        }, error = function(e) {\n"
-                + "          msg <- as.character(e$message)\n"
-                + "          missing_name <- extract_missing_name(msg)\n"
-                + "          if (!is.na(missing_name) && attempt < max_attempts) {\n"
-                + "            seed <- default_value_for(missing_name)\n"
-                + "            assign(missing_name, seed, envir = .GlobalEnv)\n"
-                + "            state[[missing_name]] <- seed\n"
-                + "            attempt <<- attempt + 1\n"
-                + "            ok <<- FALSE\n"
-                + "            cat(sprintf('Auto-seeded missing symbol: %s\\n', missing_name))\n"
-                + "          } else {\n"
-                + "            stop(e)\n"
-                + "          }\n"
-                + "        })\n"
-                + "        if (ok) break\n"
-                + "      }\n"
-                + "    }\n"
-                + "    if (!startsWith(job$lhs, '__effect_')) {\n"
-                + "      if (is.null(value)) {\n"
-                + "        state[[job$lhs]] <- default_value_for(job$lhs)\n"
-                + "      } else {\n"
-                + "        state[[job$lhs]] <- value\n"
-                + "      }\n"
-                + "    }\n"
-                + "    saveRDS(state, state_file)\n"
-                + "  }, error = function(e) {\n"
-                + "    status <<- 'error'\n"
-                + "    message <<- as.character(e$message)\n"
-                + "  })\n"
-                + "  release_lock(lock_file)\n"
-                + "\n"
-                + "  result <- list(id = job$id, lhs = job$lhs, status = status, message = message)\n"
-                + "  saveRDS(result, sprintf('runtime/results/result_%04d.rds', job$id))\n"
-                + "  unlink(job_file)\n"
-                + "}\n"
-                + "cat('Worker stopped.\\n')\n";
+    private Map<String, Set<String>> extractFunctionDependencies(String prelude, Set<String> producedVars) {
+        Map<String, Set<String>> result = new HashMap<>();
+        if (prelude == null || prelude.isBlank()) {
+            return result;
+        }
+        String[] lines = prelude.split("\\R", -1);
+        Pattern functionHeader = Pattern.compile("^\\s*([A-Za-z][A-Za-z0-9_]*)\\s*<-\\s*function\\s*\\(");
+        for (int i = 0; i < lines.length; i++) {
+            Matcher headerMatcher = functionHeader.matcher(lines[i]);
+            if (!headerMatcher.find()) {
+                continue;
+            }
+            String functionName = headerMatcher.group(1);
+            StringBuilder body = new StringBuilder();
+            int balance = 0;
+            boolean started = false;
+            for (int j = i; j < lines.length; j++) {
+                String ln = lines[j];
+                for (int k = 0; k < ln.length(); k++) {
+                    char ch = ln.charAt(k);
+                    if (ch == '{') {
+                        balance++;
+                        started = true;
+                    } else if (ch == '}') {
+                        balance--;
+                    }
+                }
+                body.append(ln).append("\n");
+                if (started && balance <= 0) {
+                    i = j;
+                    break;
+                }
+            }
+            Set<String> deps = new LinkedHashSet<>();
+            Matcher identMatcher = IDENTIFIER_PATTERN.matcher(body.toString());
+            while (identMatcher.find()) {
+                String ident = identMatcher.group();
+                if (producedVars.contains(ident)) {
+                    deps.add(ident);
+                }
+            }
+            result.put(functionName, deps);
+        }
+        return result;
     }
 
     private static class JobDefinition {
@@ -745,6 +662,23 @@ public class MicroserviceRBundleGenerator {
             this.deps = deps;
         }
     }
+
+    private static class RuntimeConfig {
+        private final boolean plotEnabled;
+        private final boolean xesEnabled;
+        private final String xesFileName;
+        private final int nValue;
+        private final int iValue;
+        private final int fpValue;
+
+        private RuntimeConfig(boolean plotEnabled, boolean xesEnabled, String xesFileName,
+                int nValue, int iValue, int fpValue) {
+            this.plotEnabled = plotEnabled;
+            this.xesEnabled = xesEnabled;
+            this.xesFileName = xesFileName;
+            this.nValue = nValue;
+            this.iValue = iValue;
+            this.fpValue = fpValue;
+        }
+    }
 }
-
-

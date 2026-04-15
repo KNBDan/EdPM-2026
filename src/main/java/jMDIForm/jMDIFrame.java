@@ -21,6 +21,9 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -2149,19 +2152,10 @@ public class jMDIFrame extends JInternalFrame {
                         sequentialReferenceCode,
                         new File(".").getCanonicalFile().toPath().resolve("GeneratedMicroservices")
                 );
-
-                StringBuilder output = new StringBuilder();
-                output.append("Microservice files generated in:\n")
-                      .append(result.getOutputDirectory().toString())
-                      .append("\n\nGenerated files:\n");
-                List<String> fileNames = result.getGeneratedFileNames();
-                for (String fileName : fileNames) {
-                    output.append("- ").append(fileName).append("\n");
-                }
-                textDescriptionRCode.setText(output.toString());
-
-                // Files are already generated on disk in microservice mode.
-                rCodeActivatorBut.setEnabled(false);
+                Path runScript = result.getOutputDirectory().resolve("run_microservice.R");
+                String microserviceCode = Files.readString(runScript, StandardCharsets.UTF_8);
+                textDescriptionRCode.setText(microserviceCode);
+                rCodeActivatorBut.setEnabled(true);
                 copyDescrButRCode.setEnabled(true);
             } catch (IOException ex) {
                 Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
@@ -2235,7 +2229,12 @@ public class jMDIFrame extends JInternalFrame {
             File file1 = SaveChooser.getSelectedFile();
             String file = null;
             try {
-                file = file1.getCanonicalPath()+".R";
+                String canonicalPath = file1.getCanonicalPath();
+                if (canonicalPath.toLowerCase().endsWith(".r")) {
+                    file = canonicalPath;
+                } else {
+                    file = canonicalPath + ".R";
+                }
             } catch (IOException ex) {
                 Logger.getLogger(mdi.class.getName()).log(Level.SEVERE, null, ex);
             }
