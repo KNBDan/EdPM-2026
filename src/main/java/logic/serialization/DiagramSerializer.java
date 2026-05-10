@@ -5,8 +5,10 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import EPM.mdi;
 import logic.serialization.model.ConvertedObject;
 import logic.serialization.model.Figure_s;
+import logic.serialization.model.GenerationSettings;
 import logic.serialization.model.Line_s;
 import objects.line.Line;
 import objects.line.LineStraight;
@@ -17,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.prefs.Preferences;
 import jMDIForm.readSaveData;
 import domain.DiagramLoadResult;
 
@@ -32,6 +35,21 @@ public class DiagramSerializer {
             int idR,
             int idO,
             int idIF
+    ) {
+        return createConvertedObject(all, lines, zoom, idS, idNV, idV, idR, idO, idIF, null);
+    }
+
+    public ConvertedObject createConvertedObject(
+            List<figures> all,
+            List<Line> lines,
+            int zoom,
+            int idS,
+            int idNV,
+            int idV,
+            int idR,
+            int idO,
+            int idIF,
+            GenerationSettings generationSettings
     ) {
         ArrayList<Figure_s> figuresList = new ArrayList<>();
 
@@ -89,7 +107,8 @@ public class DiagramSerializer {
                 linesList,
                 figuresList,
                 zoom,
-                idS, idNV, idV, idR, idO, idIF
+                idS, idNV, idV, idR, idO, idIF,
+                generationSettings != null ? generationSettings : buildGenerationSettingsFromPrefs()
         );
     }
 
@@ -164,6 +183,36 @@ public class DiagramSerializer {
             lines.add(0, ls);
         }
 
-        return new DiagramLoadResult(all, lines, zoom, idS, idNV, idV, idR, idO, idIF);
+        GenerationSettings settings = cv.getGenerationSettings();
+        if (settings == null) {
+            settings = GenerationSettings.defaults();
+        }
+
+        return new DiagramLoadResult(all, lines, zoom, idS, idNV, idV, idR, idO, idIF, settings);
+    }
+
+    private GenerationSettings buildGenerationSettingsFromPrefs() {
+        Preferences prefs = mdi.prefsMdi;
+        GenerationSettings s = GenerationSettings.defaults();
+
+        s.setIValue(parseIntSafe(prefs.get("IValue", "1"), 1));
+        s.setNValue(parseIntSafe(prefs.get("NValue", "1000"), 1000));
+        s.setFpValue(parseIntSafe(prefs.get("FPValue", "1"), 1));
+        s.setStartId(parseIntSafe(prefs.get("startId", "1"), 1));
+        s.setStepId(parseIntSafe(prefs.get("stepId", "1"), 1));
+        s.setGraphState(prefs.getBoolean("graphState", true));
+        s.setXesState(prefs.getBoolean("xesState", true));
+        s.setOActiveState(prefs.getBoolean("oActiveState", true));
+        s.setXesName(prefs.get("xesName", "result"));
+
+        return s;
+    }
+
+    private int parseIntSafe(String value, int fallback) {
+        try {
+            return Integer.parseInt(value == null ? "" : value.trim());
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
     }
 }

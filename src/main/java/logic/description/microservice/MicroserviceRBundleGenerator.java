@@ -23,8 +23,19 @@ public class MicroserviceRBundleGenerator {
     private static final Pattern INT_ASSIGNMENT_PATTERN = Pattern.compile("^\\s*([A-Za-z][A-Za-z0-9_]*)\\s*<-\\s*([0-9]+)\\s*$");
 
     public MicroserviceGenerationResult generateBundle(String sequentialCode, Path outputRoot) throws IOException {
+        return generateBundle(sequentialCode, outputRoot, MicroserviceGenerationOptions.defaults());
+    }
+
+    public MicroserviceGenerationResult generateBundle(
+            String sequentialCode,
+            Path outputRoot,
+            MicroserviceGenerationOptions options
+    ) throws IOException {
         if (sequentialCode == null) {
             sequentialCode = "";
+        }
+        if (options == null) {
+            options = MicroserviceGenerationOptions.defaults();
         }
 
         Files.createDirectories(outputRoot);
@@ -40,7 +51,7 @@ public class MicroserviceRBundleGenerator {
         List<List<JobDefinition>> levels = computeTopologicalLevels(jobs);
         RuntimeConfig runtimeConfig = parseRuntimeConfig(mainProgram);
 
-        String futureBasedCode = buildFutureBasedCode(prelude, jobs, levels, runtimeConfig);
+        String futureBasedCode = buildFutureBasedCode(prelude, jobs, levels, runtimeConfig, options);
 
         writeString(bundleDir.resolve("run_microservice.R"), futureBasedCode);
         writeString(bundleDir.resolve("run_local.R"), buildRunLocalWrapper());
@@ -90,9 +101,16 @@ public class MicroserviceRBundleGenerator {
     }
 
     private String buildFutureBasedCode(String prelude, List<JobDefinition> jobs,
-            List<List<JobDefinition>> levels, RuntimeConfig runtimeConfig) {
+            List<List<JobDefinition>> levels, RuntimeConfig runtimeConfig, MicroserviceGenerationOptions options) {
         StringBuilder code = new StringBuilder();
-        String sanitizedPrelude = stripInlinePlotsFromPrelude(prelude);
+        String effectivePrelude = prelude;
+        boolean hasLlmHelpers = effectivePrelude != null && effectivePrelude.contains("_llm_complexity <- function(");
+        boolean useRuntimeLlmInR = options.getLlmSimulationMode() == LlmSimulationMode.RUNTIME && hasLlmHelpers;
+        if (useRuntimeLlmInR) {
+            RRuntimeLlmApiInjector injector = new RRuntimeLlmApiInjector();
+            effectivePrelude = injector.patchPreludeForRuntime(effectivePrelude);
+        }
+        String sanitizedPrelude = stripInlinePlotsFromPrelude(effectivePrelude);
         sanitizedPrelude = normalizePlotLabelsToEnglish(sanitizedPrelude);
         String firstRName = "";
         for (JobDefinition job : jobs) {
@@ -101,11 +119,6 @@ public class MicroserviceRBundleGenerator {
                 break;
             }
         }
-
-        code.append("# =============================================================================\n");
-        code.append("# EdPM Model - Microservice Execution using futures\n");
-        code.append("# Generated: ").append(LocalDateTime.now()).append("\n");
-        code.append("# =============================================================================\n\n");
 
         // Library loading
         code.append("# --- ==== [ Library Loading ] ==== ---\n");
@@ -126,9 +139,8 @@ public class MicroserviceRBundleGenerator {
 
         // Configuration
         code.append("# --- ==== [ Configuration ] ==== ---\n");
-        code.append("if (!exists('seed_value')) seed_value <- 12345L\n");
-        code.append("if (!exists('worker_count')) worker_count <- future::availableCores()\n");
-        code.append("set.seed(seed_value)\n\n");
+        code.append("if (!exists('worker_count')) worker_count <- 1L\n");
+        code.append("\n");
 
         // Plan selection
         code.append("if (worker_count > 1) {\n");
@@ -143,10 +155,21 @@ public class MicroserviceRBundleGenerator {
         code.append("# --- ==== [ Base Functions (from prelude) ] ==== ---\n");
         code.append(sanitizedPrelude);
         code.append("\n\n");
+        if (useRuntimeLlmInR) {
+            RRuntimeLlmApiInjector injector = new RRuntimeLlmApiInjector();
+            code.append(injector.buildRuntimeApiBlock(options.getLlmToken()));
+            code.append("\n");
+        }
 
         // Job execution with levels
         code.append("# --- ==== [ Microservice Job Execution ] ==== ---\n");
         code.append("# Jobs are organized by dependency levels for parallel execution\n\n");
+        code.append("# LLM simulation mode selected at generation time\n");
+        code.append("llm_simulation_mode <- \"")
+                .append(escapeRString(options.getLlmSimulationMode().name()))
+                .append("\"\n");
+        code.append("has_llm_blocks <- ").append(hasLlmHelpers ? "TRUE" : "FALSE").append("\n");
+        code.append("if (!has_llm_blocks) llm_simulation_mode <- \"DISABLED\"\n\n");
 
         code.append("# Runtime flags inherited from linear generation settings\n");
         code.append("is_plot_active <- ").append(runtimeConfig.plotEnabled ? "TRUE" : "FALSE").append("\n");
@@ -217,80 +240,86 @@ public class MicroserviceRBundleGenerator {
         code.append("  }\n");
         code.append("}\n\n");
 
-        for (int levelIdx = 0; levelIdx < levels.size(); levelIdx++) {
-            List<JobDefinition> level = levels.get(levelIdx);
-            code.append("# --- Level ").append(levelIdx + 1).append(" (").append(level.size()).append(" jobs) ---\n");
-            
-            if (level.size() == 1) {
-                JobDefinition job = level.get(0);
-                code.append("cat('Executing: ").append(job.lhs).append(" (level ").append(levelIdx + 1).append(")\\n');\n");
-                for (String dep : job.deps) {
-                    code.append("dep_").append(job.id).append("_").append(dep).append(" <- results_env$").append(dep).append("\n");
-                    if (dep.matches("^R\\d+$")) {
-                        code.append("if (is.null(dep_").append(job.id).append("_").append(dep).append(")) dep_")
-                                .append(job.id).append("_").append(dep).append(" <- empty_r_stream()\n");
-                    }
-                }
-                code.append("future_").append(job.id).append(" <- future({\n");
-                for (String dep : job.deps) {
-                    code.append("  ").append(dep).append(" <- dep_").append(job.id).append("_").append(dep).append("\n");
-                    code.append("  assign(\"").append(dep).append("\", ").append(dep).append(", envir = .GlobalEnv)\n");
-                }
-                code.append("  result <- ").append(job.rhs).append("\n");
-                code.append("  result\n");
-                code.append("}, seed = seed_value + ").append(job.id).append(")\n");
-                code.append("results_env$").append(job.lhs).append(" <- value(future_").append(job.id).append(")\n\n");
-                if (job.lhs.matches("^R\\d+$")) {
-                    code.append("process_r_result(\"").append(job.lhs).append("\", results_env$").append(job.lhs).append(")\n\n");
-                }
+        code.append("# --- Dynamic DAG Scheduler ---\n");
+        code.append("job_defs <- list(\n");
+        for (int i = 0; i < jobs.size(); i++) {
+            JobDefinition job = jobs.get(i);
+            code.append("  list(name=\"").append(job.lhs).append("\", deps=");
+            if (job.deps.isEmpty()) {
+                code.append("character(0)");
             } else {
-                code.append("cat('Executing level ").append(levelIdx + 1).append(" in parallel (").append(level.size()).append(" jobs)...\\n');\n");
-                
-                code.append("# Define job functions for parallel execution\n");
-                for (JobDefinition job : level) {
-                    code.append("# Job ").append(job.id).append(": ").append(job.lhs).append("\n");
-                    for (String dep : job.deps) {
-                        code.append("dep_").append(job.id).append("_").append(dep).append(" <- results_env$").append(dep).append("\n");
-                        if (dep.matches("^R\\d+$")) {
-                            code.append("if (is.null(dep_").append(job.id).append("_").append(dep).append(")) dep_")
-                                    .append(job.id).append("_").append(dep).append(" <- empty_r_stream()\n");
-                        }
-                    }
-                    code.append("job_func_").append(job.id).append(" <- function() {\n");
-                    for (String dep : job.deps) {
-                        code.append("  ").append(dep).append(" <- dep_").append(job.id).append("_").append(dep).append("\n");
-                        code.append("  assign(\"").append(dep).append("\", ").append(dep).append(", envir = .GlobalEnv)\n");
-                    }
-                    code.append("  ").append(job.lhs).append(" <- ").append(job.rhs).append("\n");
-                    code.append("  return(").append(job.lhs).append(")\n");
-                    code.append("}\n");
-                }
-                
-                code.append("\n# Execute all jobs in this level in parallel\n");
-                code.append("job_functions <- list(\n");
-                for (int i = 0; i < level.size(); i++) {
-                    JobDefinition job = level.get(i);
-                    code.append("  function() job_func_").append(job.id).append("()");
-                    if (i < level.size() - 1) code.append(",");
-                    code.append(" # ").append(job.lhs).append("\n");
-                }
-                code.append(")\n\n");
-                
-                code.append("# Run all jobs in parallel using future_lapply\n");
-                code.append("level_results <- future_lapply(job_functions, function(f) f(), future.seed = TRUE)\n");
-                code.append("# Store results in environment\n");
-                for (int i = 0; i < level.size(); i++) {
-                    JobDefinition job = level.get(i);
-                    code.append("results_env$").append(job.lhs).append(" <- level_results[[").append(i + 1).append("]]\n");
-                }
-                for (JobDefinition job : level) {
-                    if (job.lhs.matches("^R\\d+$")) {
-                        code.append("process_r_result(\"").append(job.lhs).append("\", results_env$").append(job.lhs).append(")\n");
+                code.append("c(");
+                for (int d = 0; d < job.deps.size(); d++) {
+                    code.append("\"").append(job.deps.get(d)).append("\"");
+                    if (d < job.deps.size() - 1) {
+                        code.append(", ");
                     }
                 }
-                code.append("\n");
+                code.append(")");
             }
+            code.append(", run=function(){ ").append(job.rhs).append(" })");
+            if (i < jobs.size() - 1) {
+                code.append(",");
+            }
+            code.append("\n");
         }
+        code.append(")\n\n");
+        code.append("active_futures <- list()\n");
+        code.append("completed_jobs <- character(0)\n");
+        code.append("total_jobs <- length(job_defs)\n\n");
+        code.append("is_job_ready <- function(job) {\n");
+        code.append("  if (job$name %in% completed_jobs) return(FALSE)\n");
+        code.append("  if (job$name %in% names(active_futures)) return(FALSE)\n");
+        code.append("  if (length(job$deps) == 0) return(TRUE)\n");
+        code.append("  all(job$deps %in% completed_jobs)\n");
+        code.append("}\n\n");
+        code.append("while (length(completed_jobs) < total_jobs) {\n");
+        code.append("  ready_idx <- which(vapply(job_defs, is_job_ready, logical(1)))\n");
+        code.append("  while (length(ready_idx) > 0 && length(active_futures) < worker_count) {\n");
+        code.append("    jidx <- ready_idx[1]\n");
+        code.append("    ready_idx <- ready_idx[-1]\n");
+        code.append("    job <- job_defs[[jidx]]\n");
+        code.append("    dep_vals <- list()\n");
+        code.append("    if (length(job$deps) > 0) {\n");
+        code.append("      for (dep in job$deps) {\n");
+        code.append("        dep_val <- results_env[[dep]]\n");
+        code.append("        if (is.null(dep_val) && grepl('^R[0-9]+$', dep)) dep_val <- empty_r_stream()\n");
+        code.append("        dep_vals[[dep]] <- dep_val\n");
+        code.append("      }\n");
+        code.append("    }\n");
+        code.append("    cat(sprintf('Starting: %s (active=%d)\\n', job$name, length(active_futures) + 1L))\n");
+        code.append("    active_futures[[job$name]] <- future({\n");
+        code.append("      if (length(dep_vals) > 0) {\n");
+        code.append("        for (dep_name in names(dep_vals)) {\n");
+        code.append("          assign(dep_name, dep_vals[[dep_name]], envir = .GlobalEnv)\n");
+        code.append("        }\n");
+        code.append("      }\n");
+        code.append("      job$run()\n");
+        code.append("    }, seed = NULL)\n");
+        code.append("  }\n");
+        code.append("  if (length(active_futures) == 0) {\n");
+        code.append("    stop('Deadlock detected: no active futures and no ready jobs. Check DAG dependencies.')\n");
+        code.append("  }\n");
+        code.append("  resolved_name <- NULL\n");
+        code.append("  for (nm in names(active_futures)) {\n");
+        code.append("    if (future::resolved(active_futures[[nm]])) {\n");
+        code.append("      resolved_name <- nm\n");
+        code.append("      break\n");
+        code.append("    }\n");
+        code.append("  }\n");
+        code.append("  if (is.null(resolved_name)) {\n");
+        code.append("    Sys.sleep(0.01)\n");
+        code.append("    next\n");
+        code.append("  }\n");
+        code.append("  result_val <- value(active_futures[[resolved_name]])\n");
+        code.append("  active_futures[[resolved_name]] <- NULL\n");
+        code.append("  results_env[[resolved_name]] <- result_val\n");
+        code.append("  completed_jobs <- c(completed_jobs, resolved_name)\n");
+        code.append("  cat(sprintf('Completed: %s (%d/%d)\\n', resolved_name, length(completed_jobs), total_jobs))\n");
+        code.append("  if (grepl('^R[0-9]+$', resolved_name)) {\n");
+        code.append("    process_r_result(resolved_name, results_env[[resolved_name]])\n");
+        code.append("  }\n");
+        code.append("}\n\n");
 
         code.append("# --- ==== [ Collect All Results ] ==== ---\n");
         code.append("cat('\\n=== Collecting Results ===\\n')\n");
@@ -306,7 +335,7 @@ public class MicroserviceRBundleGenerator {
         code.append("# --- ==== [ Summary ] ==== ---\n");
         code.append("cat('\\n=== Execution Summary ===\\n')\n");
         code.append("cat('Total jobs:', length(all_results), '\\n')\n");
-        code.append("cat('Total levels:', ").append(levels.size()).append(", '\\n')\n");
+        code.append("cat('Execution mode: dynamic DAG scheduler\\n')\n");
         code.append("cat('Produced variables:\\n')\n");
         code.append("print(names(all_results))\n\n");
         code.append("# --- ==== [ Finalize XES ] ==== ---\n");
@@ -540,9 +569,7 @@ public class MicroserviceRBundleGenerator {
         return """
 args <- commandArgs(trailingOnly = TRUE)
 worker_count <- if (length(args) >= 1) as.integer(args[[1]]) else 1L
-seed_value <- if (length(args) >= 2) as.integer(args[[2]]) else 12345L
 if (is.na(worker_count) || worker_count < 1) worker_count <- 1L
-if (is.na(seed_value)) seed_value <- 12345L
 source("run_microservice.R")
 """;
     }

@@ -2,7 +2,9 @@ package EPM;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jdi.Method;
+import logic.llm.gigachat.GigaChatTokenValidator;
 import logic.serialization.model.ConvertedObject;
+import logic.serialization.model.GenerationSettings;
 import objects.figure.figures;
 import objects.figure.NV;
 import objects.figure.R;
@@ -52,6 +54,7 @@ import java.awt.event.ComponentEvent;
 
 public class mdi extends javax.swing.JFrame {     
     private static final int FRAME_OFFSET = 20;
+    private static final String PREF_LLM_TOKEN = "llmToken";
     private int c=0; // номер нового создаваемого mdi для вычисления смещения
     private PopupMenu jMDIFrame;
 
@@ -252,6 +255,12 @@ public class mdi extends javax.swing.JFrame {
         CyclomaticComplexityDialog = new javax.swing.JDialog();
         jLabel2 = new javax.swing.JLabel();
         CyclomaticComplexityValue = new javax.swing.JLabel();
+        LlmTokenSettingDialog = new javax.swing.JDialog();
+        InfoLlmLabel = new javax.swing.JLabel();
+        LlmTokenPasswordField = new javax.swing.JPasswordField();
+        SaveLlmTokButton = new javax.swing.JButton();
+        Info2LlmLabel = new javax.swing.JLabel();
+        DeleteLlmTokButton = new javax.swing.JButton();
         jDesktopPane = new javax.swing.JDesktopPane();
         jToolBar1 = new javax.swing.JToolBar();
         jButtonNew = new javax.swing.JButton();
@@ -294,6 +303,7 @@ public class mdi extends javax.swing.JFrame {
         jMenuOptions = new javax.swing.JMenu();
         jMenuItemSetI = new javax.swing.JMenuItem();
         jMenuItemColorSettings = new javax.swing.JMenuItem();
+        jMenuItemLlmSettings = new javax.swing.JMenuItem();
         jMenu5 = new javax.swing.JMenu();
         Cascade = new javax.swing.JMenuItem();
         Tile = new javax.swing.JMenuItem();
@@ -480,7 +490,7 @@ public class mdi extends javax.swing.JFrame {
                             .addComponent(jVTextColor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                             .addComponent(jChangeTextColorV, javax.swing.GroupLayout.PREFERRED_SIZE, 64, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addContainerGap(12, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -857,7 +867,7 @@ public class mdi extends javax.swing.JFrame {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, 210, Short.MAX_VALUE)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
                     .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -1071,15 +1081,17 @@ public class mdi extends javax.swing.JFrame {
         SetConstantDialogLayout.setHorizontalGroup(
             SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(SetConstantDialogLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(SetConstantDialogLayout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(SetConstantDialogLayout.createSequentialGroup()
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(OkIBut)
+                        .addGap(18, 18, 18)
+                        .addComponent(CancelIBut)
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
-            .addGroup(SetConstantDialogLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(OkIBut)
-                .addGap(18, 18, 18)
-                .addComponent(CancelIBut)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         SetConstantDialogLayout.setVerticalGroup(
             SetConstantDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1117,6 +1129,62 @@ public class mdi extends javax.swing.JFrame {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, CyclomaticComplexityDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                 .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, 57, Short.MAX_VALUE)
                 .addComponent(CyclomaticComplexityValue))
+        );
+
+        InfoLlmLabel.setText("Enter your LLM token to use V llm dificulty");
+
+        SaveLlmTokButton.setText("Save");
+        SaveLlmTokButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                SaveLlmTokButtonActionPerformed(evt);
+            }
+        });
+
+        Info2LlmLabel.setText("! Use GigaChat LLM token");
+
+        DeleteLlmTokButton.setText("delete");
+        DeleteLlmTokButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                DeleteLlmTokButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout LlmTokenSettingDialogLayout = new javax.swing.GroupLayout(LlmTokenSettingDialog.getContentPane());
+        LlmTokenSettingDialog.getContentPane().setLayout(LlmTokenSettingDialogLayout);
+        LlmTokenSettingDialogLayout.setHorizontalGroup(
+            LlmTokenSettingDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(LlmTokenSettingDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(LlmTokenSettingDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(LlmTokenSettingDialogLayout.createSequentialGroup()
+                        .addComponent(Info2LlmLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 238, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(LlmTokenSettingDialogLayout.createSequentialGroup()
+                        .addGroup(LlmTokenSettingDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(InfoLlmLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 307, Short.MAX_VALUE)
+                            .addComponent(LlmTokenPasswordField))
+                        .addGap(2, 2, 2)
+                        .addComponent(DeleteLlmTokButton)
+                        .addContainerGap())))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, LlmTokenSettingDialogLayout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(SaveLlmTokButton, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        LlmTokenSettingDialogLayout.setVerticalGroup(
+            LlmTokenSettingDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(LlmTokenSettingDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(InfoLlmLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(LlmTokenSettingDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(LlmTokenPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(DeleteLlmTokButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(Info2LlmLabel)
+                .addGap(39, 39, 39)
+                .addComponent(SaveLlmTokButton)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -1504,14 +1572,21 @@ public class mdi extends javax.swing.JFrame {
         });
         jMenuOptions.add(jMenuItemSetI);
 
-        jMenuItemColorSettings.setText("Color settings ...");
-        jMenuItemColorSettings.setActionCommand("Color settings ...");
+        jMenuItemColorSettings.setText("Color settings");
         jMenuItemColorSettings.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemColorSettingsActionPerformed(evt);
             }
         });
         jMenuOptions.add(jMenuItemColorSettings);
+
+        jMenuItemLlmSettings.setText("LLM setting");
+        jMenuItemLlmSettings.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemLlmSettingsActionPerformed(evt);
+            }
+        });
+        jMenuOptions.add(jMenuItemLlmSettings);
 
         jMenuBar1.add(jMenuOptions);
 
@@ -2070,17 +2145,20 @@ public class mdi extends javax.swing.JFrame {
     }//GEN-LAST:event_jButtonOActionPerformed
 
     private void jMenuItemSetIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSetIActionPerformed
-        String base = "5";
-        boolean bs = true;
-        stepId.setText((mdi.prefsMdi.get("stepId", base)));
-        startIdNum.setText((mdi.prefsMdi.get("startId", base)));
-        IValueField.setText((mdi.prefsMdi.get("IValue", base)));
-        NValueField.setText( (mdi.prefsMdi.get("NValue", base)));
-        boxIsPlot.setSelected((mdi.prefsMdi.getBoolean("graphState", bs)));
-        boxIsXES.setSelected((mdi.prefsMdi.getBoolean("xesState", bs)));
-        boxLookAtO.setSelected((mdi.prefsMdi.getBoolean("oActiveState", bs)));
-        xesNameFile.setText((mdi.prefsMdi.get("xesName", base)));
-        valueFP.setText((mdi.prefsMdi.get("FPValue", base)));
+        jMDIFrame selectedFrame = getSelectedDiagramFrame();
+        GenerationSettings settings = selectedFrame != null
+                ? selectedFrame.getGenerationSettings()
+                : readSettingsFromPrefs();
+
+        stepId.setText(String.valueOf(settings.getStepId()));
+        startIdNum.setText(String.valueOf(settings.getStartId()));
+        IValueField.setText(String.valueOf(settings.getIValue()));
+        NValueField.setText(String.valueOf(settings.getNValue()));
+        boxIsPlot.setSelected(settings.isGraphState());
+        boxIsXES.setSelected(settings.isXesState());
+        boxLookAtO.setSelected(settings.isOActiveState());
+        xesNameFile.setText(settings.getXesName() != null ? settings.getXesName() : "result");
+        valueFP.setText(String.valueOf(settings.getFpValue()));
                 
         enabledChanger();
 
@@ -2104,15 +2182,13 @@ public class mdi extends javax.swing.JFrame {
 
     private void OkIButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_OkIButActionPerformed
         SetConstantDialog.setVisible(false);
-        mdi.prefsMdi.put("IValue",  IValueField.getText());
-        mdi.prefsMdi.put("NValue",  NValueField.getText());
-        mdi.prefsMdi.put("FPValue",  valueFP.getText());
-        mdi.prefsMdi.putBoolean("graphState",  boxIsPlot.isSelected());
-        mdi.prefsMdi.putBoolean("xesState",  boxIsXES.isSelected());
-        mdi.prefsMdi.putBoolean("oActiveState", boxLookAtO.isSelected());
-        mdi.prefsMdi.put("startId",  startIdNum.getText());
-        mdi.prefsMdi.put("stepId",  stepId.getText());
-        mdi.prefsMdi.put("xesName", xesNameFile.getText());
+        GenerationSettings settings = buildSettingsFromDialog();
+        writeSettingsToPrefs(settings);
+
+        jMDIFrame selectedFrame = getSelectedDiagramFrame();
+        if (selectedFrame != null) {
+            selectedFrame.setGenerationSettings(settings);
+        }
         
     }//GEN-LAST:event_OkIButActionPerformed
 
@@ -2448,6 +2524,86 @@ public class mdi extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_IValueFieldActionPerformed
 
+    private void jMenuItemLlmSettingsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemLlmSettingsActionPerformed
+        LlmTokenPasswordField.setText(prefsMdi.get(PREF_LLM_TOKEN, ""));
+        LlmTokenSettingDialog.pack();
+        LlmTokenSettingDialog.setLocationRelativeTo(null);
+        LlmTokenSettingDialog.setTitle("LLM token settings");
+        LlmTokenSettingDialog.setLocation((jDesktopPane.getWidth()-jDialogSettings.getWidth())/2, (jDesktopPane.getHeight()-jDialogSettings.getHeight())/2);
+        LlmTokenSettingDialog.setVisible(true);           
+    }//GEN-LAST:event_jMenuItemLlmSettingsActionPerformed
+
+    private void SaveLlmTokButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SaveLlmTokButtonActionPerformed
+        char[] tokenChars = LlmTokenPasswordField.getPassword();
+        String token = tokenChars == null ? "" : new String(tokenChars).trim();
+        try {
+            if (token.isEmpty()) {
+                LlmTokenSettingDialog.setVisible(false);
+                return;
+            }
+
+            SaveLlmTokButton.setEnabled(false);
+            LlmTokenSettingDialog.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+            GigaChatTokenValidator validator = new GigaChatTokenValidator();
+            GigaChatTokenValidator.ValidationResult result = validator.validate(token);
+            prefsMdi.put(PREF_LLM_TOKEN, token);
+
+            String preview = result.responsePreview() == null ? "" : result.responsePreview().trim();
+            if (preview.length() > 120) {
+                preview = preview.substring(0, 120) + "...";
+            }
+            JOptionPane.showMessageDialog(
+                    this,
+                    "LLM token is valid and saved.\nMode: " + result.mode() + "\nResponse: " + preview
+            );
+            LlmTokenSettingDialog.setVisible(false);
+        } catch (Exception ex) {
+            String msg = ex.getMessage() == null ? "" : ex.getMessage();
+            boolean isPkix = msg.toLowerCase().contains("pkix")
+                    || msg.toLowerCase().contains("certification path")
+                    || msg.toLowerCase().contains("sunsecuritycertpathbuilderexception")
+                    || msg.toLowerCase().contains("unable to find valid certification path");
+
+            if (isPkix) {
+                int choice = JOptionPane.showConfirmDialog(
+                        this,
+                        "Token validation failed due to JVM certificate trust (PKIX).\n"
+                        + "This is usually not a token issue.\n\n"
+                        + "Save token without validation?",
+                        "LLM Token Warning",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                );
+                if (choice == JOptionPane.YES_OPTION) {
+                    prefsMdi.put(PREF_LLM_TOKEN, token);
+                    JOptionPane.showMessageDialog(this, "Token saved without online validation.");
+                    LlmTokenSettingDialog.setVisible(false);
+                    return;
+                }
+            }
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Token validation failed: " + msg,
+                    "LLM Token Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        } finally {
+            SaveLlmTokButton.setEnabled(true);
+            LlmTokenSettingDialog.setCursor(Cursor.getDefaultCursor());
+            if (tokenChars != null) {
+                java.util.Arrays.fill(tokenChars, '\0');
+            }
+        }
+    }//GEN-LAST:event_SaveLlmTokButtonActionPerformed
+
+    private void DeleteLlmTokButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_DeleteLlmTokButtonActionPerformed
+        LlmTokenPasswordField.setText("");
+        prefsMdi.remove(PREF_LLM_TOKEN);
+        JOptionPane.showMessageDialog(this, "Token forgotten.");
+    }//GEN-LAST:event_DeleteLlmTokButtonActionPerformed
+
 
          
     public void enabledChanger(){ 
@@ -2455,6 +2611,64 @@ public class mdi extends javax.swing.JFrame {
         xesNameFile.setEnabled(isEnabled);
         jLabel7.setEnabled(isEnabled);
     }
+
+    private jMDIFrame getSelectedDiagramFrame() {
+        JInternalFrame selected = jDesktopPane.getSelectedFrame();
+        if (selected instanceof jMDIFrame frame) {
+            return frame;
+        }
+        return null;
+    }
+
+    private GenerationSettings readSettingsFromPrefs() {
+        GenerationSettings settings = GenerationSettings.defaults();
+        settings.setIValue(parseIntSafe(mdi.prefsMdi.get("IValue", "1"), 1));
+        settings.setNValue(parseIntSafe(mdi.prefsMdi.get("NValue", "1000"), 1000));
+        settings.setFpValue(parseIntSafe(mdi.prefsMdi.get("FPValue", "1"), 1));
+        settings.setStartId(parseIntSafe(mdi.prefsMdi.get("startId", "1"), 1));
+        settings.setStepId(parseIntSafe(mdi.prefsMdi.get("stepId", "1"), 1));
+        settings.setGraphState(mdi.prefsMdi.getBoolean("graphState", true));
+        settings.setXesState(mdi.prefsMdi.getBoolean("xesState", true));
+        settings.setOActiveState(mdi.prefsMdi.getBoolean("oActiveState", true));
+        settings.setXesName(mdi.prefsMdi.get("xesName", "result"));
+        return settings;
+    }
+
+    private GenerationSettings buildSettingsFromDialog() {
+        GenerationSettings settings = GenerationSettings.defaults();
+        settings.setIValue(parseIntSafe(IValueField.getText(), 1));
+        settings.setNValue(parseIntSafe(NValueField.getText(), 1000));
+        settings.setFpValue(parseIntSafe(valueFP.getText(), 1));
+        settings.setStartId(parseIntSafe(startIdNum.getText(), 1));
+        settings.setStepId(parseIntSafe(stepId.getText(), 1));
+        settings.setGraphState(boxIsPlot.isSelected());
+        settings.setXesState(boxIsXES.isSelected());
+        settings.setOActiveState(boxLookAtO.isSelected());
+        String xesName = xesNameFile.getText() != null ? xesNameFile.getText().trim() : "";
+        settings.setXesName(xesName.isEmpty() ? "result" : xesName);
+        return settings;
+    }
+
+    private void writeSettingsToPrefs(GenerationSettings settings) {
+        mdi.prefsMdi.put("IValue", String.valueOf(settings.getIValue()));
+        mdi.prefsMdi.put("NValue", String.valueOf(settings.getNValue()));
+        mdi.prefsMdi.put("FPValue", String.valueOf(settings.getFpValue()));
+        mdi.prefsMdi.put("startId", String.valueOf(settings.getStartId()));
+        mdi.prefsMdi.put("stepId", String.valueOf(settings.getStepId()));
+        mdi.prefsMdi.putBoolean("graphState", settings.isGraphState());
+        mdi.prefsMdi.putBoolean("xesState", settings.isXesState());
+        mdi.prefsMdi.putBoolean("oActiveState", settings.isOActiveState());
+        mdi.prefsMdi.put("xesName", settings.getXesName());
+    }
+
+    private int parseIntSafe(String value, int fallback) {
+        try {
+            return Integer.parseInt(value == null ? "" : value.trim());
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
     public static void main(String args[]) throws Exception{
         java.awt.EventQueue.invokeLater(new RunnableImpl());
     }
@@ -2466,9 +2680,14 @@ public class mdi extends javax.swing.JFrame {
     public static javax.swing.JMenuItem Code_Generation;
     private javax.swing.JDialog CyclomaticComplexityDialog;
     private javax.swing.JLabel CyclomaticComplexityValue;
+    private javax.swing.JButton DeleteLlmTokButton;
     public static javax.swing.JMenuItem ExportPNG;
     private javax.swing.JFormattedTextField IValueField;
     private javax.swing.JOptionPane Info;
+    private javax.swing.JLabel Info2LlmLabel;
+    private javax.swing.JLabel InfoLlmLabel;
+    private javax.swing.JPasswordField LlmTokenPasswordField;
+    private javax.swing.JDialog LlmTokenSettingDialog;
     private javax.swing.JFormattedTextField NValueField;
     private javax.swing.JMenuItem New;
     private javax.swing.JButton OkIBut;
@@ -2479,6 +2698,7 @@ public class mdi extends javax.swing.JFrame {
     private javax.swing.JMenuItem ProductivityAnalyzesStaticMenuItem;
     public static javax.swing.JMenuItem Save;
     private javax.swing.JFileChooser SaveChooser;
+    private javax.swing.JButton SaveLlmTokButton;
     public static javax.swing.JMenuItem Saveas;
     private javax.swing.JDialog SetConstantDialog;
     private javax.swing.JMenuItem Tile;
@@ -2537,6 +2757,7 @@ public class mdi extends javax.swing.JFrame {
     public static javax.swing.JMenuItem jMenuItemClear;
     public static javax.swing.JMenuItem jMenuItemColorSettings;
     public static javax.swing.JMenuItem jMenuItemIF;
+    public static javax.swing.JMenuItem jMenuItemLlmSettings;
     public static javax.swing.JMenuItem jMenuItemNV;
     public static javax.swing.JMenuItem jMenuItemO;
     public static javax.swing.JMenuItem jMenuItemR;

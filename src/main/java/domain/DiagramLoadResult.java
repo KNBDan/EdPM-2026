@@ -3,6 +3,7 @@ package domain;
 import objects.line.Line;
 import objects.figure.figures;
 import java.util.ArrayList;
+import logic.serialization.model.GenerationSettings;
 
 public class DiagramLoadResult {
     private final ArrayList<figures> figures;
@@ -14,6 +15,7 @@ public class DiagramLoadResult {
     private final int idR;
     private final int idO;
     private final int idIF;
+    private final GenerationSettings generationSettings;
 
     public DiagramLoadResult(
             ArrayList<figures> figures,
@@ -24,7 +26,8 @@ public class DiagramLoadResult {
             int idV,
             int idR,
             int idO,
-            int idIF
+            int idIF,
+            GenerationSettings generationSettings
     ) {
         this.figures = figures;
         this.lines = lines;
@@ -35,6 +38,7 @@ public class DiagramLoadResult {
         this.idR = idR;
         this.idO = idO;
         this.idIF = idIF;
+        this.generationSettings = generationSettings;
     }
 
     public ArrayList<figures> getFigures() {
@@ -71,5 +75,9 @@ public class DiagramLoadResult {
 
     public int getIdIF() {
         return idIF;
+    }
+
+    public GenerationSettings getGenerationSettings() {
+        return generationSettings;
     }
 }

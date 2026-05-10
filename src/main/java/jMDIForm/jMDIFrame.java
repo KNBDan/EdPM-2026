@@ -7,6 +7,7 @@ import java.awt.datatransfer.StringSelection;//для буфера обмена
 import com.fasterxml.jackson.core.JsonProcessingException;
 import EPM.mdi;
 import logic.serialization.model.ConvertedObject;
+import logic.serialization.model.GenerationSettings;
 import objects.figure.*;
 import objects.line.*;
 import objects.point.*;
@@ -26,7 +27,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -37,16 +40,25 @@ import java.awt.event.MouseMotionAdapter;
 import java.util.Collections;
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
+import javax.swing.BorderFactory;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.SwingWorker;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import domain.DiagramLoadResult;
 import logic.description.DescriptionService;
+import logic.description.microservice.LlmSimulationMode;
+import logic.description.microservice.MicroserviceGenerationOptions;
 import logic.description.microservice.MicroserviceGenerationResult;
 import logic.description.microservice.MicroserviceRBundleGenerator;
+import logic.description.microservice.RRuntimeLlmApiInjector;
+import logic.llm.gigachat.GigaChatApiClient;
+import logic.llm.gigachat.GigaChatComplexityService;
 import logic.graph.ConnectionPolicy;
 import logic.history.HistoryService;
 import logic.pagerank.PageRankService;
@@ -112,6 +124,7 @@ public class jMDIFrame extends JInternalFrame {
     private final ConnectionPolicy connectionPolicy = new ConnectionPolicy();
     private final DiagramSerializer diagramSerializer = new DiagramSerializer();
     private final DescriptionService descriptionService = new DescriptionService();
+    private GenerationSettings generationSettings = GenerationSettings.defaults();
             
     
     private static final int RESIZE_ZONE_SIZE = 10; 
@@ -119,6 +132,7 @@ public class jMDIFrame extends JInternalFrame {
     public jMDIFrame(String title, Boolean resizable, Boolean closable, Boolean maximizable, Boolean iconifiable, String file) {
         super(title, resizable, closable, maximizable, iconifiable);
         initComponents();
+        initializeGenerationSettingsFromPrefs();
         
        
 
@@ -221,7 +235,11 @@ public class jMDIFrame extends JInternalFrame {
         rCodeActivatorBut = new javax.swing.JButton();
         SequentialRadioButton = new javax.swing.JRadioButton();
         MicroserviceRadioButton = new javax.swing.JRadioButton();
+        LlmSimText = new javax.swing.JLabel();
+        NowLlmSimRadioButton = new javax.swing.JRadioButton();
+        RuntimeLlmSimRadioButton = new javax.swing.JRadioButton();
         CodeGenerationMethod = new javax.swing.ButtonGroup();
+        LlmSimulationTips = new javax.swing.ButtonGroup();
         jScrollPane1 = new javax.swing.JScrollPane();
         jPanel1 = new javax.swing.JPanel();
         zminus = new javax.swing.JButton();
@@ -397,6 +415,16 @@ public class jMDIFrame extends JInternalFrame {
         CodeGenerationMethod.add(MicroserviceRadioButton);
         MicroserviceRadioButton.setText("Microservice");
 
+        LlmSimText.setText("LLM simulating");
+
+        LlmSimulationTips.add(NowLlmSimRadioButton);
+        NowLlmSimRadioButton.setSelected(true);
+        NowLlmSimRadioButton.setText("Now");
+        NowLlmSimRadioButton.setToolTipText("");
+
+        LlmSimulationTips.add(RuntimeLlmSimRadioButton);
+        RuntimeLlmSimRadioButton.setText("In runtime");
+
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
@@ -409,15 +437,21 @@ public class jMDIFrame extends JInternalFrame {
                         .addComponent(closeDescrBut))
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(toRCodeBut, javax.swing.GroupLayout.DEFAULT_SIZE, 109, Short.MAX_VALUE)
                             .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(SequentialRadioButton, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(MicroserviceRadioButton, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(0, 0, Short.MAX_VALUE)))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                    .addComponent(toRCodeBut, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                                    .addComponent(SequentialRadioButton, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 91, Short.MAX_VALUE)
+                                    .addComponent(MicroserviceRadioButton, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 91, Short.MAX_VALUE))
+                                .addGap(0, 0, Short.MAX_VALUE))
+                            .addComponent(LlmSimText, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                                .addGap(0, 0, Short.MAX_VALUE)
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(NowLlmSimRadioButton, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(RuntimeLlmSimRadioButton, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addGap(18, 18, 18)
                         .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
@@ -435,7 +469,13 @@ public class jMDIFrame extends JInternalFrame {
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(SequentialRadioButton)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(MicroserviceRadioButton)))
+                                .addComponent(MicroserviceRadioButton)
+                                .addGap(44, 44, 44)
+                                .addComponent(LlmSimText)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(NowLlmSimRadioButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(RuntimeLlmSimRadioButton)))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(closeDescrBut)
@@ -1365,7 +1405,18 @@ public class jMDIFrame extends JInternalFrame {
     }//GEN-LAST:event_moveobj
 
     public ConvertedObject CreatorConvertObject() {
-        return diagramSerializer.createConvertedObject(all, lines, zoom, idS, idNV, idV, idR, idO, idIF);
+        return diagramSerializer.createConvertedObject(
+                all,
+                lines,
+                zoom,
+                idS,
+                idNV,
+                idV,
+                idR,
+                idO,
+                idIF,
+                copyGenerationSettings(generationSettings)
+        );
     }
 
     //Сохранение файла
@@ -1390,6 +1441,8 @@ public class jMDIFrame extends JInternalFrame {
     public void LoadFromJSON(String saveName) {
         try {
             DiagramLoadResult result = diagramSerializer.loadFromJson(saveName);
+            setGenerationSettings(result.getGenerationSettings());
+            applyGenerationSettingsToPrefs(generationSettings);
 
             zoom = result.getZoom();
             idS = result.getIdS();
@@ -1421,6 +1474,68 @@ public class jMDIFrame extends JInternalFrame {
 
         } catch (Exception ex) {
             ex.printStackTrace();
+        }
+    }
+
+    private void applyGenerationSettingsToPrefs(GenerationSettings settings) {
+        GenerationSettings s = settings != null ? settings : GenerationSettings.defaults();
+        mdi.prefsMdi.put("IValue", String.valueOf(s.getIValue()));
+        mdi.prefsMdi.put("NValue", String.valueOf(s.getNValue()));
+        mdi.prefsMdi.put("FPValue", String.valueOf(s.getFpValue()));
+        mdi.prefsMdi.put("startId", String.valueOf(s.getStartId()));
+        mdi.prefsMdi.put("stepId", String.valueOf(s.getStepId()));
+        mdi.prefsMdi.putBoolean("graphState", s.isGraphState());
+        mdi.prefsMdi.putBoolean("xesState", s.isXesState());
+        mdi.prefsMdi.putBoolean("oActiveState", s.isOActiveState());
+        mdi.prefsMdi.put("xesName", s.getXesName() != null ? s.getXesName() : "result");
+    }
+
+    public GenerationSettings getGenerationSettings() {
+        return copyGenerationSettings(generationSettings);
+    }
+
+    public void setGenerationSettings(GenerationSettings settings) {
+        generationSettings = copyGenerationSettings(settings);
+    }
+
+    public void syncGenerationSettingsToPrefs() {
+        applyGenerationSettingsToPrefs(generationSettings);
+    }
+
+    private GenerationSettings copyGenerationSettings(GenerationSettings source) {
+        GenerationSettings src = source != null ? source : GenerationSettings.defaults();
+        GenerationSettings copy = new GenerationSettings();
+        copy.setIValue(src.getIValue());
+        copy.setNValue(src.getNValue());
+        copy.setFpValue(src.getFpValue());
+        copy.setStartId(src.getStartId());
+        copy.setStepId(src.getStepId());
+        copy.setGraphState(src.isGraphState());
+        copy.setXesState(src.isXesState());
+        copy.setOActiveState(src.isOActiveState());
+        copy.setXesName(src.getXesName());
+        return copy;
+    }
+
+    private void initializeGenerationSettingsFromPrefs() {
+        GenerationSettings s = GenerationSettings.defaults();
+        s.setIValue(parseIntSafe(mdi.prefsMdi.get("IValue", "1"), 1));
+        s.setNValue(parseIntSafe(mdi.prefsMdi.get("NValue", "1000"), 1000));
+        s.setFpValue(parseIntSafe(mdi.prefsMdi.get("FPValue", "1"), 1));
+        s.setStartId(parseIntSafe(mdi.prefsMdi.get("startId", "1"), 1));
+        s.setStepId(parseIntSafe(mdi.prefsMdi.get("stepId", "1"), 1));
+        s.setGraphState(mdi.prefsMdi.getBoolean("graphState", true));
+        s.setXesState(mdi.prefsMdi.getBoolean("xesState", true));
+        s.setOActiveState(mdi.prefsMdi.getBoolean("oActiveState", true));
+        s.setXesName(mdi.prefsMdi.get("xesName", "result"));
+        generationSettings = s;
+    }
+
+    private int parseIntSafe(String value, int fallback) {
+        try {
+            return Integer.parseInt(value == null ? "" : value.trim());
+        } catch (NumberFormatException ex) {
+            return fallback;
         }
     }
 
@@ -1458,6 +1573,7 @@ public class jMDIFrame extends JInternalFrame {
     
     private void formInternalFrameActivated(javax.swing.event.InternalFrameEvent evt) {//GEN-FIRST:event_formInternalFrameActivated
         // TODO add your handling code here:
+        syncGenerationSettingsToPrefs();
         ButtonActivated();
     }
 
@@ -2144,39 +2260,143 @@ public class jMDIFrame extends JInternalFrame {
     }//GEN-LAST:event_copyDescrButActionPerformed
 
     private void toRCodeButActionPerformed(java.awt.event.ActionEvent evt) {                                           
-        if (MicroserviceRadioButton.isSelected()) {
-            try {
-                String sequentialReferenceCode = descriptionService.generateRCode(all, textDescription.getText());
-                MicroserviceRBundleGenerator bundleGenerator = new MicroserviceRBundleGenerator();
-                MicroserviceGenerationResult result = bundleGenerator.generateBundle(
-                        sequentialReferenceCode,
-                        new File(".").getCanonicalFile().toPath().resolve("GeneratedMicroservices")
-                );
-                Path runScript = result.getOutputDirectory().resolve("run_microservice.R");
-                String microserviceCode = Files.readString(runScript, StandardCharsets.UTF_8);
-                textDescriptionRCode.setText(microserviceCode);
-                rCodeActivatorBut.setEnabled(true);
-                copyDescrButRCode.setEnabled(true);
-            } catch (IOException ex) {
-                Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
-                JOptionPane.showMessageDialog(this, "Error generating microservice files: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            } catch (RuntimeException ex) {
-                Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
-                JOptionPane.showMessageDialog(this, "R generation error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
+        LlmSimulationMode llmMode = resolveLlmSimulationModeForMicroservice();
+        boolean shouldRunLlmPrecalc = (llmMode == LlmSimulationMode.GENERATE_TIME)
+                && hasLlmComplexityBlocks();
+        if (shouldRunLlmPrecalc) {
+            runLlmPrecalcWithWaitDialog(llmMode);
             return;
         }
+        generateRCodeWithMode(llmMode);
+    }
 
+    private void generateRCodeWithMode(LlmSimulationMode llmMode) {
         try {
-            String rCode = descriptionService.generateRCode(all, textDescription.getText());
-            textDescriptionRCode.setText(rCode);
+            String code = buildGeneratedRCode(llmMode);
+            textDescriptionRCode.setText(code);
             rCodeActivatorBut.setEnabled(true);
             copyDescrButRCode.setEnabled(true);
+        } catch (IOException ex) {
+            Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(this, "Error generating microservice files: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         } catch (RuntimeException ex) {
             Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(this, "R generation error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
-    }                                                                                    
+    }
+
+    private String buildGeneratedRCode(LlmSimulationMode llmMode) throws IOException {
+        if (MicroserviceRadioButton.isSelected()) {
+            String sequentialReferenceCode = descriptionService.generateRCode(all, textDescription.getText());
+            MicroserviceRBundleGenerator bundleGenerator = new MicroserviceRBundleGenerator();
+            String llmToken = mdi.prefsMdi.get("llmToken", "");
+            MicroserviceGenerationOptions microOptions =
+                    MicroserviceGenerationOptions.withLlmSettings(llmMode, llmToken);
+            MicroserviceGenerationResult result = bundleGenerator.generateBundle(
+                    sequentialReferenceCode,
+                    new File(".").getCanonicalFile().toPath().resolve("GeneratedMicroservices"),
+                    microOptions
+            );
+            Path runScript = result.getOutputDirectory().resolve("run_microservice.R");
+            return Files.readString(runScript, StandardCharsets.UTF_8);
+        }
+        String linearCode = descriptionService.generateRCode(all, textDescription.getText());
+        if (llmMode == LlmSimulationMode.RUNTIME && hasLlmComplexityBlocks()) {
+            String llmToken = mdi.prefsMdi.get("llmToken", "");
+            linearCode = injectRuntimeLlmIntoLinearCode(linearCode, llmToken);
+        }
+        return linearCode;
+    }
+
+    private String injectRuntimeLlmIntoLinearCode(String code, String llmToken) {
+        if (code == null || code.isBlank()) {
+            return code;
+        }
+        if (!code.contains("_llm_complexity <- function(")) {
+            return code;
+        }
+        RRuntimeLlmApiInjector injector = new RRuntimeLlmApiInjector();
+        String patched = code.replace("as.numeric(O_default)", "llm_runtime_complexity(prompt, O_default)");
+        if (patched.contains("llm_runtime_complexity <- function(")) {
+            return patched;
+        }
+        String marker = "# --- ==== [ Основная программа ] ==== ---";
+        int idx = patched.indexOf(marker);
+        if (idx < 0) {
+            idx = patched.indexOf("# --- ==== [ Р");
+        }
+        String runtimeBlock = "\n\n" + injector.buildRuntimeApiBlock(llmToken) + "\n";
+        if (idx >= 0) {
+            return patched.substring(0, idx) + runtimeBlock + patched.substring(idx);
+        }
+        return patched + runtimeBlock;
+    }
+
+    private void runLlmPrecalcWithWaitDialog(LlmSimulationMode llmMode) {
+        final JDialog waitDialog = new JDialog(SwingUtilities.getWindowAncestor(this), "LLM Request", Dialog.ModalityType.APPLICATION_MODAL);
+        waitDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        waitDialog.setResizable(false);
+        waitDialog.setAlwaysOnTop(true);
+        waitDialog.setLayout(new BorderLayout(10, 10));
+        JLabel label = new JLabel("Please wait, LLM request is in progress...");
+        JProgressBar bar = new JProgressBar();
+        bar.setIndeterminate(true);
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        panel.add(label, BorderLayout.NORTH);
+        panel.add(bar, BorderLayout.CENTER);
+        waitDialog.add(panel, BorderLayout.CENTER);
+        waitDialog.pack();
+        waitDialog.setLocationRelativeTo(this);
+
+        setGenerationControlsEnabled(false);
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            private RuntimeException runtimeError;
+            private IOException ioError;
+            private String generatedCode;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    applyLlmComplexityForGenerateTimeMode(llmMode);
+                    generatedCode = buildGeneratedRCode(llmMode);
+                } catch (IOException ex) {
+                    ioError = ex;
+                } catch (RuntimeException ex) {
+                    runtimeError = ex;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setGenerationControlsEnabled(true);
+                waitDialog.dispose();
+                if (ioError != null) {
+                    Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, ioError);
+                    JOptionPane.showMessageDialog(jMDIFrame.this, "Error generating microservice files: " + ioError.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if (runtimeError != null) {
+                    System.out.println("[LLM NOW] ERROR: " + runtimeError.getMessage());
+                    Logger.getLogger(jMDIFrame.class.getName()).log(Level.SEVERE, null, runtimeError);
+                    JOptionPane.showMessageDialog(jMDIFrame.this, "LLM complexity calculation error: " + runtimeError.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                textDescriptionRCode.setText(generatedCode == null ? "" : generatedCode);
+                rCodeActivatorBut.setEnabled(true);
+                copyDescrButRCode.setEnabled(true);
+            }
+        };
+        worker.execute();
+        waitDialog.setVisible(true);
+    }
+
+    private void setGenerationControlsEnabled(boolean enabled) {
+        toRCodeBut.setEnabled(enabled);
+        rCodeActivatorBut.setEnabled(enabled && !textDescriptionRCode.getText().isEmpty());
+        copyDescrButRCode.setEnabled(enabled && !textDescriptionRCode.getText().isEmpty());
+    }
 
     private void copyDescrButRCodeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyDescrButRCodeActionPerformed
         copyToClipboard(textDescriptionRCode.getText());
@@ -2193,6 +2413,192 @@ public class jMDIFrame extends JInternalFrame {
     private void SequentialRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SequentialRadioButtonActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_SequentialRadioButtonActionPerformed
+
+    private LlmSimulationMode resolveLlmSimulationModeForMicroservice() {
+        if (!hasLlmComplexityBlocks()) {
+            return LlmSimulationMode.DISABLED;
+        }
+        if (RuntimeLlmSimRadioButton.isSelected()) {
+            return LlmSimulationMode.RUNTIME;
+        }
+        if (NowLlmSimRadioButton.isSelected()) {
+            return LlmSimulationMode.GENERATE_TIME;
+        }
+        return LlmSimulationMode.GENERATE_TIME;
+    }
+
+    private boolean hasLlmComplexityBlocks() {
+        for (figures fig : all) {
+            if (isLlmComplexityFigure(fig)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isLlmComplexityFigure(figures fig) {
+        if (fig == null) {
+            return false;
+        }
+        String selected = fig.getVSelected();
+        if (selected == null) {
+            return false;
+        }
+        String norm = selected.trim().toLowerCase();
+        boolean bySelected = norm.contains("llm") || norm.equals("11");
+        if (bySelected) {
+            return true;
+        }
+        String name = fig.getNameF();
+        return name != null && name.startsWith("V") && norm.contains("11");
+    }
+
+    private void applyLlmComplexityForGenerateTimeMode(LlmSimulationMode mode) {
+        if (mode != LlmSimulationMode.GENERATE_TIME) {
+            return;
+        }
+        int total = all == null ? 0 : all.size();
+        System.out.println("[LLM DEBUG] mode=" + mode + ", totalFigures=" + total);
+        for (figures fig : all) {
+            if (fig == null) {
+                continue;
+            }
+            System.out.println("[LLM DEBUG] fig name=" + fig.getNameF()
+                    + ", shape=" + fig.getShape()
+                    + ", vSelected=" + fig.getVSelected());
+        }
+        if (!hasLlmComplexityBlocks()) {
+            System.out.println("[LLM DEBUG] No LLM blocks detected by parser.");
+            return;
+        }
+        System.out.println("[LLM] start complexity pre-calculation mode=" + mode);
+
+        String token = mdi.prefsMdi.get("llmToken", "").trim();
+        if (token.isEmpty()) {
+            throw new RuntimeException("LLM token is empty. Open LLM settings and save token first.");
+        }
+
+        Map<String, figures> byName = new HashMap<>();
+        for (figures fig : all) {
+            if (fig != null && fig.getNameF() != null) {
+                byName.put(fig.getNameF(), fig);
+            }
+        }
+
+        Map<String, List<figures>> oByV = new HashMap<>();
+        for (Line line : lines) {
+            if (line == null) {
+                continue;
+            }
+            figures from = byName.get(line.getID1());
+            figures to = byName.get(line.getID2());
+            if (from == null || to == null) {
+                continue;
+            }
+            if ("O".equals(from.getShape()) && "V".equals(to.getShape())) {
+                oByV.computeIfAbsent(to.getNameF(), k -> new ArrayList<>()).add(from);
+            }
+        }
+
+        GigaChatComplexityService complexityService = new GigaChatComplexityService(new GigaChatApiClient());
+        int updatedCount = 0;
+        StringBuilder report = new StringBuilder();
+        long startedAt = System.currentTimeMillis();
+        for (figures fig : all) {
+            if (!isLlmComplexityFigure(fig)) {
+                continue;
+            }
+            String prompt = fig.getLlmPrompt();
+            if (prompt == null || prompt.isBlank()) {
+                throw new RuntimeException("LLM prompt is empty for block " + fig.getNameF());
+            }
+            String promptPreview = prompt.trim();
+            if (promptPreview.length() > 180) {
+                promptPreview = promptPreview.substring(0, 180) + "...";
+            }
+            System.out.println("[LLM NOW] block=" + fig.getNameF() + " prompt=" + toAsciiSafe(promptPreview));
+
+            GigaChatComplexityService.LlmComplexityMeasurement measurement =
+                    measureLlmComplexity(complexityService, token, prompt);
+            fig.setCoef(String.valueOf(measurement.complexityO()));
+            String preview = measurement.responseText() == null ? "" : measurement.responseText().trim();
+            if (preview.length() > 140) {
+                preview = preview.substring(0, 140) + "...";
+            }
+            report.append("V=").append(fig.getNameF())
+                    .append(", latencyMs=").append(measurement.latencyMs())
+                    .append(", O=").append(measurement.complexityO())
+                    .append("\n");
+            System.out.println("[LLM NOW] block=" + fig.getNameF()
+                    + " latencyMs=" + measurement.latencyMs()
+                    + " complexityO=" + measurement.complexityO()
+                    + " tokens(total)=" + measurement.totalTokens());
+            System.out.println("[LLM NOW] response=" + toAsciiSafe(preview));
+
+            List<figures> linkedOBlocks = oByV.get(fig.getNameF());
+            if (linkedOBlocks == null || linkedOBlocks.isEmpty()) {
+                System.out.println("[LLM NOW] block=" + fig.getNameF() + " has no linked O->V. Using computed O via V coefficient.");
+                report.append("  -> no linked O->V, using V coefficient\n");
+                continue;
+            }
+            for (figures oFig : linkedOBlocks) {
+                oFig.setCoef(String.valueOf(measurement.complexityO()));
+                updatedCount++;
+                System.out.println("[LLM NOW] assigned O=" + measurement.complexityO() + " to O-block " + oFig.getNameF());
+                report.append("  -> assigned to O=").append(oFig.getNameF()).append("\n");
+            }
+        }
+
+        if (report.length() == 0) {
+            System.out.println("[LLM NOW] No LLM V blocks were processed. Check V complexity contains 'llm' and NOW mode is selected.");
+        } else {
+            report.append("Updated O-blocks: ").append(updatedCount);
+            System.out.println("[LLM NOW] Report:\n" + report);
+        }
+        System.out.println("[LLM] finished complexity pre-calculation in " + (System.currentTimeMillis() - startedAt) + " ms");
+    }
+
+    private String toAsciiSafe(String text) {
+        if (text == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch >= 32 && ch <= 126) {
+                sb.append(ch);
+            } else if (ch == '\n' || ch == '\r' || ch == '\t') {
+                sb.append(ch);
+            } else {
+                sb.append("\\u").append(String.format("%04x", (int) ch));
+            }
+        }
+        return sb.toString();
+    }
+
+    private GigaChatComplexityService.LlmComplexityMeasurement measureLlmComplexity(
+            GigaChatComplexityService complexityService,
+            String token,
+            String prompt
+    ) {
+        try {
+            return complexityService.measureWithBearerToken(token, "GigaChat", null, prompt, 0.2, 512);
+        } catch (IOException | InterruptedException bearerError) {
+            try {
+                return complexityService.measureWithAuthKey(
+                        token,
+                        GigaChatApiClient.DEFAULT_SCOPE,
+                        "GigaChat",
+                        null,
+                        prompt,
+                        0.2,
+                        512
+                );
+            } catch (IOException | InterruptedException authKeyError) {
+                throw new RuntimeException("Failed to measure LLM complexity: " + authKeyError.getMessage(), authKeyError);
+            }
+        }
+    }
 
     
 
@@ -2498,7 +2904,11 @@ public class jMDIFrame extends JInternalFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.ButtonGroup CodeGenerationMethod;
+    private javax.swing.JLabel LlmSimText;
+    private javax.swing.ButtonGroup LlmSimulationTips;
     private javax.swing.JRadioButton MicroserviceRadioButton;
+    private javax.swing.JRadioButton NowLlmSimRadioButton;
+    private javax.swing.JRadioButton RuntimeLlmSimRadioButton;
     private javax.swing.JFileChooser SaveChooser;
     private javax.swing.JRadioButton SequentialRadioButton;
     private java.awt.Canvas canvas1;

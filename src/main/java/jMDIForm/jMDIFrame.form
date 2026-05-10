@@ -101,18 +101,26 @@
                           </Group>
                           <Group type="102" attributes="0">
                               <Component id="jPanel4" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="toRCodeBut" pref="109" max="32767" attributes="0"/>
                                   <Group type="102" attributes="0">
-                                      <Group type="103" groupAlignment="0" attributes="0">
-                                          <Component id="SequentialRadioButton" min="-2" pref="91" max="-2" attributes="0"/>
-                                          <Component id="MicroserviceRadioButton" min="-2" pref="91" max="-2" attributes="0"/>
+                                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                                          <Component id="toRCodeBut" alignment="0" pref="0" max="32767" attributes="0"/>
+                                          <Component id="SequentialRadioButton" alignment="0" pref="91" max="32767" attributes="0"/>
+                                          <Component id="MicroserviceRadioButton" alignment="0" pref="91" max="32767" attributes="0"/>
                                       </Group>
                                       <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                                   </Group>
+                                  <Component id="LlmSimText" max="32767" attributes="0"/>
+                                  <Group type="102" alignment="1" attributes="0">
+                                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                                      <Group type="103" groupAlignment="1" attributes="0">
+                                          <Component id="NowLlmSimRadioButton" min="-2" pref="91" max="-2" attributes="0"/>
+                                          <Component id="RuntimeLlmSimRadioButton" min="-2" pref="91" max="-2" attributes="0"/>
+                                      </Group>
+                                  </Group>
                               </Group>
-                              <EmptySpace max="-2" attributes="0"/>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
                               <Component id="jPanel5" min="-2" max="-2" attributes="0"/>
                           </Group>
                       </Group>
@@ -135,6 +143,12 @@
                                       <Component id="SequentialRadioButton" min="-2" max="-2" attributes="0"/>
                                       <EmptySpace max="-2" attributes="0"/>
                                       <Component id="MicroserviceRadioButton" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace min="-2" pref="44" max="-2" attributes="0"/>
+                                      <Component id="LlmSimText" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="NowLlmSimRadioButton" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="RuntimeLlmSimRadioButton" min="-2" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
                               <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
@@ -327,11 +341,36 @@
                 <Property name="text" type="java.lang.String" value="Microservice"/>
               </Properties>
             </Component>
+            <Component class="javax.swing.JLabel" name="LlmSimText">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="LLM simulating"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JRadioButton" name="NowLlmSimRadioButton">
+              <Properties>
+                <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                  <ComponentRef name="LlmSimulationTips"/>
+                </Property>
+                <Property name="selected" type="boolean" value="true"/>
+                <Property name="text" type="java.lang.String" value="Now"/>
+                <Property name="toolTipText" type="java.lang.String" value=""/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JRadioButton" name="RuntimeLlmSimRadioButton">
+              <Properties>
+                <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                  <ComponentRef name="LlmSimulationTips"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="In runtime"/>
+              </Properties>
+            </Component>
           </SubComponents>
         </Container>
       </SubComponents>
     </Container>
     <Component class="javax.swing.ButtonGroup" name="CodeGenerationMethod">
+    </Component>
+    <Component class="javax.swing.ButtonGroup" name="LlmSimulationTips">
     </Component>
   </NonVisualComponents>
   <Properties>

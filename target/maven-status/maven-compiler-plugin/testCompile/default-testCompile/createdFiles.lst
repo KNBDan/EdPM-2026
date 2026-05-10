@@ -1,0 +1,3 @@
+logic\llm\gigachat\GigaChatIntegrationTest.class
+logic\regression\EdpmXesRegressionTest.class
+logic\regression\PokraskaCodeGenerationTest.class
